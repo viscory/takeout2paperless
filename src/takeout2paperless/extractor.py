@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from takeout2paperless.archive import (
     SUPPORTED_FORMATS,
     ArchiveEntry,
+    count_entries,
     detect_format,
     iter_archive,
 )
@@ -91,19 +92,21 @@ class TakeoutExtractor:
 
     def _process_archive(self, path: Path, console: Any) -> None:
         """Process a single archive, updating *self._report*."""
+        archive_name = path.name
+
+        # Count entries first (metadata only, no content) for the progress bar
         try:
-            entries = list(iter_archive(path))
+            total = count_entries(path)
         except Exception:
-            _logger.exception("Failed to read archive '%s'", path.name)
+            _logger.exception("Failed to read archive '%s'", archive_name)
             self._report.errors += 1
             return
 
-        if not entries:
+        if total == 0:
             return
 
         from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn
 
-        archive_name = path.name
         local_ok = 0
 
         file_progress = Progress(
@@ -116,8 +119,18 @@ class TakeoutExtractor:
         with file_progress:
             file_task = file_progress.add_task(
                 f"Files in [cyan]{archive_name}[/cyan]",
-                total=len(entries),
+                total=total,
             )
+
+            # Lazily iterate — never materialise all entries in RAM.
+            # The archive handle stays open while we step through;
+            # each entry streams its content chunk-by-chunk.
+            try:
+                entries = iter_archive(path)
+            except Exception:
+                _logger.exception("Failed to open archive '%s'", archive_name)
+                self._report.errors += 1
+                return
 
             for entry in entries:
                 file_progress.update(
@@ -133,9 +146,8 @@ class TakeoutExtractor:
 
                 out_path = self._unique_path(entry.path)
                 try:
-                    data = entry.read()
                     if not self._config.dry_run:
-                        out_path.write_bytes(data)
+                        entry.write_to(out_path)
                     self._report.record_processed(out_path.name)
                     local_ok += 1
                     _logger.debug("Extracted: %s -> %s", entry.path, out_path.name)

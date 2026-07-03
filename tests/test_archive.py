@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from takeout2paperless.archive import (
+    count_entries,
     detect_format,
     iter_archive,
 )
@@ -39,62 +40,75 @@ class TestDetectFormat:
         assert detect_format(Path(name)) is None
 
 
+class TestCountEntries:
+    """count_entries returns file counts without reading content."""
+
+    def test_zip(self, fixtures_dir: Path) -> None:
+        assert count_entries(fixtures_dir / "test.zip") == 5
+
+    def test_tar(self, fixtures_dir: Path) -> None:
+        assert count_entries(fixtures_dir / "test.tar.gz") == 2
+
+    def test_7z(self, fixtures_dir: Path) -> None:
+        assert count_entries(fixtures_dir / "test.7z") == 2
+
+    def test_unsupported_format(self) -> None:
+        assert count_entries(Path("/nonexistent/file.pdf")) == 0
+
+
 class TestIterZip:
-    """Iteration over .zip archives."""
+    """Iteration over .zip archives — lazy, streaming."""
 
     def test_reads_all_regular_files(self, fixtures_dir: Path) -> None:
-        path = fixtures_dir / "test.zip"
-        entries = list(iter_archive(path))
-        assert len(entries) == 5
-        names = {e.path for e in entries}
+        names = {e.path for e in iter_archive(fixtures_dir / "test.zip")}
+        assert len(names) == 5
         assert "Takeout/Drive/report.pdf" in names
         assert "Takeout/Google Photos/image.jpg" in names
 
-    def test_content_is_readable(self, fixtures_dir: Path) -> None:
-        entries = list(iter_archive(fixtures_dir / "test.zip"))
-        for e in entries:
-            if e.path == "Takeout/Drive/report.pdf":
-                assert e.read() == b"pdf content"
+    def test_write_to_streams_content(self, fixtures_dir: Path, tmp_path: Path) -> None:
+        for entry in iter_archive(fixtures_dir / "test.zip"):
+            if entry.path == "Takeout/Drive/report.pdf":
+                dest = tmp_path / "report.pdf"
+                entry.write_to(dest)
+                assert dest.read_bytes() == b"pdf content"
                 return
-        pytest.fail("report.pdf not found")
+        pytest.fail("report.pdf not found in archive")
 
 
 class TestIterTar:
-    """Iteration over .tar.gz archives."""
+    """Iteration over .tar.gz archives — lazy, streaming."""
 
     def test_reads_all_regular_files(self, fixtures_dir: Path) -> None:
-        path = fixtures_dir / "test.tar.gz"
-        entries = list(iter_archive(path))
-        assert len(entries) == 2
-        names = {e.path for e in entries}
+        names = {e.path for e in iter_archive(fixtures_dir / "test.tar.gz")}
+        assert len(names) == 2
         assert "Takeout/Drive/letter.pdf" in names
 
-    def test_content_is_readable(self, fixtures_dir: Path) -> None:
-        entries = list(iter_archive(fixtures_dir / "test.tar.gz"))
-        for e in entries:
-            if e.path == "Takeout/Drive/letter.pdf":
-                assert e.read() == b"letter pdf"
+    def test_write_to_streams_content(self, fixtures_dir: Path, tmp_path: Path) -> None:
+        for entry in iter_archive(fixtures_dir / "test.tar.gz"):
+            if entry.path == "Takeout/Drive/letter.pdf":
+                dest = tmp_path / "letter.pdf"
+                entry.write_to(dest)
+                assert dest.read_bytes() == b"letter pdf"
                 return
-        pytest.fail("letter.pdf not found")
+        pytest.fail("letter.pdf not found in archive")
 
 
 class TestIter7z:
-    """Iteration over .7z archives."""
+    """Iteration over .7z archives — lazy, streaming."""
 
     def test_reads_all_regular_files(self, fixtures_dir: Path) -> None:
-        path = fixtures_dir / "test.7z"
-        entries = list(iter_archive(path))
-        assert len(entries) == 2
-        names = {e.path for e in entries}
+        names = {e.path for e in iter_archive(fixtures_dir / "test.7z")}
+        assert len(names) == 2
         assert "Takeout/Drive/data.csv" in names
 
-    def test_content_is_readable(self, fixtures_dir: Path) -> None:
-        entries = list(iter_archive(fixtures_dir / "test.7z"))
-        for e in entries:
-            if e.path == "Takeout/Drive/data.csv":
-                assert e.read() == b"csv content"
+    def test_write_to_streams_content(self, fixtures_dir: Path, tmp_path: Path) -> None:
+        for entry in iter_archive(fixtures_dir / "test.7z"):
+            if entry.path == "Takeout/Drive/data.csv":
+                dest = tmp_path / "data.csv"
+                entry.write_to(dest)
+                assert dest.read_bytes() == b"csv content"
                 return
-        pytest.fail("data.csv not found")
+        pytest.fail("data.csv not found in archive")
 
 
 class TestIterUnsupported:
@@ -102,4 +116,5 @@ class TestIterUnsupported:
 
     def test_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unsupported archive format"):
-            list(iter_archive(Path("/nonexistent/readme.pdf")))
+            for _ in iter_archive(Path("/nonexistent/readme.pdf")):
+                pass  # pragma: no cover
