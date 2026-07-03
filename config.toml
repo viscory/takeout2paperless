@@ -1,7 +1,7 @@
 # takeout2paperless configuration
 # See config/example.toml for a fully annotated version.
 
-input_dir = "."
+input_dir = "/home/fai/Downloads/takeout/"
 output_dir = "paperless_ready"
 
 target_extensions = [
@@ -9,12 +9,17 @@ target_extensions = [
 ]
 
 dry_run = false
-fingerprint = false
+fingerprint = true
 
 [exclude.directories]
 "google photos" = true
-trash = true
+"trash" = true
+"cache" = true
+"config" = true
+"local" = true
+"code" = true
+"cloud_credentials" = true
 
 [exclude.filename_patterns]
 # Add your own regex patterns here, for example:
-# "exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf)(?:_\\d{1,3})?\\.pdf$"
+"exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf)(?:_\\d{1,3})?\\.pdf$"
