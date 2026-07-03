@@ -5,7 +5,6 @@
 # and customise it.  All settings live here; there are no CLI flags.
 # ────────────────────────────────────────────────────────────────────
 
-
 # ── Directories ────────────────────────────────────────────────────
 
 # Directory containing your Google Takeout archive files.
@@ -29,6 +28,21 @@ target_extensions = [
     ".csv",
     ".txt",
 ]
+
+
+# ── Advanced ───────────────────────────────────────────────────────
+
+# When true, no files are written.  Useful for testing your rules.
+dry_run = false
+
+# When true, the original directory path is encoded into the filename
+# so you can distinguish files from different folders.
+#
+#   e.g. Takeout/Drive/Documents/report.pdf
+#        → Takeout_Drive_Documents_report.pdf
+#
+# instead of just ``report.pdf``.
+fingerprint = false
 
 
 # ── Exclusion rules ────────────────────────────────────────────────
@@ -58,18 +72,3 @@ target_extensions = [
   # 🔹  Remove, replace, or add your own patterns as needed.
   [exclude.filename_patterns]
   # "exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf)(?:_\\d{1,3})?\\.pdf$"
-
-
-# ── Advanced ───────────────────────────────────────────────────────
-
-# When true, no files are written.  Useful for testing your rules.
-dry_run = false
-
-# When true, the original directory path is encoded into the filename
-# so you can distinguish files from different folders.
-#
-#   e.g. Takeout/Drive/Documents/report.pdf
-#        → Takeout_Drive_Documents_report.pdf
-#
-# instead of just ``report.pdf``.
-fingerprint = false

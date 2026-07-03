@@ -8,6 +8,9 @@ target_extensions = [
     ".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt",
 ]
 
+dry_run = false
+fingerprint = false
+
 [exclude.directories]
 "google photos" = true
 trash = true
@@ -15,6 +18,3 @@ trash = true
 [exclude.filename_patterns]
 # Add your own regex patterns here, for example:
 # "exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf)(?:_\\d{1,3})?\\.pdf$"
-
-dry_run = false
-fingerprint = false
