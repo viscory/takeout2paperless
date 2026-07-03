@@ -9,5 +9,17 @@ wheels/
 # Virtual environments
 .venv
 
-# Output directory
+# Output directory (local runs)
 paperless_ready/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Type checking / linting caches
+.mypy_cache/
+.ruff_cache/
