@@ -2,11 +2,12 @@
 """
 Google Takeout Document Extractor for Paperless-ngx
 ---------------------------------------------------
-- Uses Python's native zipfile module (no extra dependencies required).
-- Skips media & Google Photos, flattens output, handles duplicates.
+Extracts documents from Google Takeout zip archives, skips unwanted files
+based on a config file, and outputs a flattened directory for Paperless-ngx.
 """
 
 import argparse
+import json
 import logging
 import re
 import zipfile
@@ -18,16 +19,18 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 
-# ─── Configuration ──────────────────────────────────────────────────────────────
-TARGET_EXTENSIONS = {".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"}
-EXCLUDE_PATHS = ["google photos", "trash"]
-OUTPUT_DIR = "paperless_ready"
+# ─── Defaults ─────────────────────────────────────────────────────────────────
 
-# Cambridge / CIE style exam papers: e.g. 1123_w15_ms_21.pdf, 9702_s18_qp_12.pdf
-QUESTION_PAPER_RE = re.compile(
-    r"^\d{4}_[a-z]\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf)(?:_\d{1,3})?\.pdf$",
-    re.IGNORECASE,
-)
+DEFAULT_CONFIG = {
+    "target_extensions": [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"],
+    "exclude_directories": {
+        "google photos": True,
+        "trash": True,
+    },
+    "exclude_filename_patterns": [],
+}
+
+OUTPUT_DIR = "paperless_ready"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,31 +40,72 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def load_config(config_path="config.json"):
+    """Load config from a JSON file, falling back to defaults for missing keys."""
+    config = dict(DEFAULT_CONFIG)
+    path = Path(config_path)
+    if path.is_file():
+        with open(path) as f:
+            user = json.load(f)
+        for key in config:
+            if key in user:
+                config[key] = user[key]
+    else:
+        logger.info("No config file found, using defaults")
+    return config
+
+
+# ─── Extractor ────────────────────────────────────────────────────────────────
+
+
 class TakeoutExtractor:
-    def __init__(self, input_dir, output_dir=OUTPUT_DIR):
+    def __init__(self, input_dir, config, output_dir=OUTPUT_DIR):
         self.input_dir = Path(input_dir).resolve()
         self.output_dir = Path(output_dir).resolve()
         self.file_counter = defaultdict(int)
         self.stats = {"processed": 0, "skipped": 0, "errors": 0}
         self.skip_reasons = defaultdict(int)
         self.skip_examples = defaultdict(list)
-        self.processed_examples = []
+        self.processed_files = []
+
+        # Config-derived rules
+        self.target_extensions = {
+            e.lower() for e in config.get("target_extensions", [])
+        }
+
+        # Only include directory patterns that are enabled (true)
+        self.exclude_dirs = [
+            d.lower()
+            for d, enabled in config.get("exclude_directories", {}).items()
+            if enabled
+        ]
+
+        # Compile filename regex patterns
+        self.filename_blocklist = [
+            re.compile(p, re.IGNORECASE)
+            for p in config.get("exclude_filename_patterns", [])
+        ]
 
     def _should_extract(self, filepath):
-        """Return bool and reason for extraction."""
+        """Return (bool, reason) — whether to extract and why."""
         path_lower = filepath.lower()
         filename = Path(filepath).name
 
-        for bad in EXCLUDE_PATHS:
-            if bad in path_lower:
-                return False, f"Excluded path ({bad})"
+        # 1. Check excluded directories
+        for d in self.exclude_dirs:
+            if d in path_lower:
+                return False, f"Excluded path ({d})"
 
         ext = Path(path_lower).suffix
-        if ext not in TARGET_EXTENSIONS:
+
+        # 2. Check target extension
+        if ext not in self.target_extensions:
             return False, f"Skipped extension ({ext})"
 
-        if ext == ".pdf" and QUESTION_PAPER_RE.match(filename):
-            return False, "Exam paper (qp/ms/er/gt/etc)"
+        # 3. Check filename-based blocklist
+        for pat in self.filename_blocklist:
+            if pat.search(filename):
+                return False, f"Blocked filename pattern ({pat.pattern})"
 
         return True, "Target document"
 
@@ -108,7 +152,6 @@ class TakeoutExtractor:
 
                         out_path = self._get_unique_path(member)
                         try:
-                            # Stream directly out of the zip file into the flattened file path
                             with (
                                 z.open(member) as source,
                                 open(out_path, "wb") as target,
@@ -116,8 +159,7 @@ class TakeoutExtractor:
                                 target.write(source.read())
 
                             self.stats["processed"] += 1
-                            if len(self.processed_examples) < 5:
-                                self.processed_examples.append(out_path.name)
+                            self.processed_files.append(out_path.name)
                             logger.info(f"  Extracted: {member} -> {out_path.name}")
                         except Exception as e:
                             logger.error(f"  Failed extracting {member}: {e}")
@@ -150,12 +192,17 @@ class TakeoutExtractor:
                 for ex in self.skip_examples.get(reason, []):
                     branch.add(f"[italic]{ex}[/italic]")
 
-        # ── Processed samples ──────────────────────────────────────────────
+        # ── Processed files ────────────────────────────────────────────────
         processed_tree = None
-        if self.processed_examples:
-            processed_tree = Tree("[bold green]Processed samples[/bold green]")
-            for name in self.processed_examples:
+        if self.processed_files:
+            label = f"[bold green]Processed files ({len(self.processed_files)})[/bold green]"
+            processed_tree = Tree(label)
+            show = self.processed_files[:50]
+            remainder = len(self.processed_files) - len(show)
+            for name in show:
                 processed_tree.add(f"[italic]{name}[/italic]")
+            if remainder > 0:
+                processed_tree.add(f"[dim]… and {remainder} more[/dim]")
 
         # ── Render ─────────────────────────────────────────────────────────
         report = Table(show_header=False, box=None, padding=(0, 1))
@@ -176,15 +223,23 @@ class TakeoutExtractor:
         console.print()
 
 
+# ─── CLI ──────────────────────────────────────────────────────────────────────
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Extract documents from Google Takeout for Paperless-ngx"
     )
-    parser.get_default = lambda dest: None
     parser.add_argument(
         "input_dir", nargs="?", default=".", help="Directory containing archives"
     )
     parser.add_argument("-o", "--output", default=OUTPUT_DIR, help="Output directory")
+    parser.add_argument(
+        "-c",
+        "--config",
+        default="config.json",
+        help="Path to configuration file (default: config.json)",
+    )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable debug logging"
     )
@@ -193,8 +248,10 @@ def main():
     if args.verbose:
         logger.setLevel(logging.DEBUG)
 
+    config = load_config(args.config)
+
     try:
-        if TakeoutExtractor(args.input_dir, args.output).run():
+        if TakeoutExtractor(args.input_dir, config, args.output).run():
             return
     except KeyboardInterrupt:
         logger.info("\nInterrupted by user")
