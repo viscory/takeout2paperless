@@ -57,6 +57,19 @@ fingerprint = false
   "google photos" = true     # Skip Google Photos folders
   trash = true               # Skip Trash folders
 
+  # ── Directory regex patterns ─────────────────────────────────────
+  # Each entry is a named rule whose value is a regex.
+  # Any file whose *full archive path* matches one of these patterns
+  # (case-insensitive) is skipped.
+  #
+  # Use this for precise path-based exclusions — e.g. dotted dirs like
+  # .local/ or .config/, telemetry folders, etc.
+  #
+  # 🔹  Remove, replace, or add your own patterns as needed.
+  [exclude.directory_patterns]
+  # "dot-local-config" = "(?:^|/)\\.(?:local|config)(?:/|$)"
+  # "telemetry" = "open-telemetry"
+
   # ── Filename regex patterns ──────────────────────────────────────
   # Each entry is a named rule whose value is a regex.
   # Any file whose *filename* matches one of these patterns
@@ -71,4 +84,4 @@ fingerprint = false
   #
   # 🔹  Remove, replace, or add your own patterns as needed.
   [exclude.filename_patterns]
-  # "exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf)(?:_\\d{1,3})?\\.pdf$"
+  # "exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf|fq|sw)(?:_\\d{1,3})?\\.pdf$"

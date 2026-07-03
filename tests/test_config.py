@@ -17,6 +17,7 @@ class TestConfigDefaults:
         assert cfg.dry_run is False
         assert ".pdf" in cfg.target_extensions
         assert "trash" in cfg.exclude_directories
+        assert len(cfg.exclude_directory_patterns) == 0
         assert len(cfg.exclude_filename_patterns) == 0
 
     def test_load_empty_file(self, tmp_path: Path) -> None:
@@ -24,6 +25,7 @@ class TestConfigDefaults:
         p.write_text("")
         cfg = Config.load(str(p))
         assert cfg.dry_run is False
+        assert len(cfg.exclude_directory_patterns) == 0
         assert len(cfg.exclude_filename_patterns) == 0
 
     def test_dry_run_flag(self, tmp_path: Path) -> None:
@@ -59,11 +61,21 @@ class TestConfigOverrides:
         assert pat.match("1123_w15_ms_21.pdf")
         assert not pat.match("normal.pdf")
 
+    def test_directory_patterns(self, tmp_path: Path) -> None:
+        p = tmp_path / "cfg.toml"
+        p.write_text('[exclude.directory_patterns]\ndotlocal = "\\\\.local/"\n')
+        cfg = Config.load(str(p))
+        assert len(cfg.exclude_directory_patterns) == 1
+        pat = cfg.exclude_directory_patterns[0]
+        assert pat.search("foo/.local/bar")
+        assert not pat.search("foo/localization.txt")
+
     def test_invalid_regex_skipped(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
         p.write_text('[exclude.filename_patterns]\nbad = "[invalid"\n')
         cfg = Config.load(str(p))
         assert len(cfg.exclude_filename_patterns) == 0
+        assert len(cfg.exclude_directory_patterns) == 0
 
     def test_custom_target_extensions(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"

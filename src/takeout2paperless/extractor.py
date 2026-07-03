@@ -174,10 +174,15 @@ class TakeoutExtractor:
         lower = entry.path.lower()
         name = Path(entry.path).name
 
-        # 1. Directory blocklist
+        # 1. Directory blocklist (substring)
         for blocked in self._config.exclude_directories:
             if blocked in lower:
                 return False, f"Excluded directory ({blocked})"
+
+        # 1b. Directory regex patterns (matched against full path)
+        for pat in self._config.exclude_directory_patterns:
+            if pat.search(entry.path):
+                return False, "Excluded directory pattern"
 
         # 2. Extension check
         ext = Path(lower).suffix

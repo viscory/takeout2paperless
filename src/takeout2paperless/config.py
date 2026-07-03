@@ -33,6 +33,9 @@ class Config:
     # Directory blocklist (lowercase fragments that are enabled)
     exclude_directories: frozenset[str]
 
+    # Directory regex patterns (compiled, case-insensitive, matched against full path)
+    exclude_directory_patterns: tuple[Pattern[str], ...]
+
     # Filename regex patterns (compiled, case-insensitive)
     exclude_filename_patterns: tuple[Pattern[str], ...]
 
@@ -96,6 +99,21 @@ class Config:
         # fall back to built-in defaults.
         exclude_dirs = frozenset(enabled_dirs) if enabled_dirs else frozenset(_default_exclude_dirs)
 
+        # Directory regex patterns (matched against full archive path)
+        dir_pats_raw = exclude_raw.get("directory_patterns", {})
+        if not isinstance(dir_pats_raw, dict):
+            _logger.warning("exclude.directory_patterns must be a table, ignoring")
+            dir_pats_raw = {}
+        dir_patterns: list[Pattern[str]] = []
+        for name, raw_pat in dir_pats_raw.items():
+            if not isinstance(raw_pat, str):
+                _logger.warning("Directory pattern '%s' is not a string, skipping", name)
+                continue
+            try:
+                dir_patterns.append(re.compile(raw_pat, re.IGNORECASE))
+            except re.error as exc:
+                _logger.warning("Invalid regex for '%s': %s — skipping", name, exc)
+
         # Filename patterns
         pats_raw = exclude_raw.get("filename_patterns", {})
         if not isinstance(pats_raw, dict):
@@ -119,6 +137,7 @@ class Config:
             output_dir=output_dir,
             target_extensions=frozenset(e.lower() for e in exts),
             exclude_directories=exclude_dirs,
+            exclude_directory_patterns=tuple(dir_patterns),
             exclude_filename_patterns=tuple(patterns),
             dry_run=dry_run,
             fingerprint=fingerprint,

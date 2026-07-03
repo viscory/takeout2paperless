@@ -19,7 +19,16 @@ fingerprint = true
 "local" = true
 "code" = true
 "cloud_credentials" = true
+"tuttee" = true
+
+[exclude.directory_patterns]
+# Match .local/ and .config/ as path components (more precise than substring)
+"dot-local-config" = "(?:^|/)\\.(?:local|config)(?:/|$)"
+# Match Google Takeout telemetry export files
+"telemetry" = "open-telemetry"
 
 [exclude.filename_patterns]
-# Add your own regex patterns here, for example:
-"exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf)(?:_\\d{1,3})?\\.pdf$"
+# Cambridge / CIE-style exam PDFs plus specimen/frequently-asked variants
+"exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf|fq|sw)(?:_\\d{1,3})?\\.pdf$"
+# Google Takeout telemetry CSV exports
+"telemetry-csv" = "^open-telemetry.*\\.csv$"
