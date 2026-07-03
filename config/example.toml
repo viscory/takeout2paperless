@@ -84,4 +84,4 @@ fingerprint = false
   #
   # 🔹  Remove, replace, or add your own patterns as needed.
   [exclude.filename_patterns]
-  # "exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf|fq|sw)(?:_\\d{1,3})?\\.pdf$"
+  # "exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf|fq|sw)(?:_\\d{1,3})?(?:\\s*\\(\\d+\\))?\\.pdf$"
