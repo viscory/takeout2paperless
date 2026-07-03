@@ -82,15 +82,16 @@ class TakeoutExtractor:
                     overall_task,
                     description=f"Processing [cyan]{arc.name}[/cyan]",
                 )
-                self._process_archive(arc, console)
-                overall.advance(overall_task)
+                self._process_archive(arc, console, overall, overall_task)
 
         self._report.render(console)
         return self._report
 
     # ── Internals ──────────────────────────────────────────────────
 
-    def _process_archive(self, path: Path, console: Any) -> None:
+    def _process_archive(
+        self, path: Path, console: Any, overall: Any | None = None, overall_task: Any | None = None
+    ) -> None:
         """Process a single archive, updating *self._report*."""
         archive_name = path.name
 
@@ -156,6 +157,12 @@ class TakeoutExtractor:
                     self._report.errors += 1
 
                 file_progress.advance(file_task)
+                if overall is not None and overall_task is not None:
+                    overall.advance(overall_task, 1 / total if total else 0)
+
+        if overall is not None and overall_task is not None:
+            # Ensure we advance any remaining fractional progress
+            overall.advance(overall_task, 0)
 
         self._report.archive_stats.append({"archive": archive_name, "files": local_ok})
 
