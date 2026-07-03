@@ -1,87 +1,145 @@
 # takeout2paperless
 
-Extract documents from Google Takeout archives (`.zip`) for import into [Paperless-ngx](https://docs.paperless-ngx.com/).
+Extract documents from Google Takeout archives for import into
+[Paperless-ngx](https://docs.paperless-ngx.com/).
 
-Google Takeout dumps everything — documents, photos, videos, Google Photos metadata — into multi-volume zip archives with deeply nested directories. This tool:
+Google Takeout dumps everything — documents, photos, videos, Google
+Photos metadata — into multi-volume archives with deeply nested
+directories.  This tool:
 
-- Scans your Takeout folders inside each archive
-- Extracts only document files (PDF, Word, Excel, CSV, TXT)
-- Skips unwanted files based on a **config file** — block directories (Google Photos, Trash) and filename regex patterns
-- Flattens output into a single directory with unique filenames (e.g. `document.pdf`, `document_1.pdf`)
-- Prints a detailed report showing what was processed, skipped (with reasons and examples), and any errors
+- Scans your Takeout archives in **all formats Google provides**
+- Extracts only document files you care about
+- Skips unwanted files based on a **single config file** — no CLI flags
+- Flattens output into one directory with unique filenames
+- Optionally **fingerprints** filenames with their original directory
+  path so you can tell where each file came from
+- Prints a detailed summary report
 
-## Usage
+## Supported archive formats
 
-```
-uv run python main.py [input_dir] [-o output_dir] [-c config] [-v]
-```
+| Format       | Extension(s)                     | Backend            |
+|--------------|----------------------------------|--------------------|
+| ZIP          | `.zip`                           | `zipfile` (stdlib) |
+| TAR (gzip)   | `.tar.gz`, `.tgz`                | `tarfile` (stdlib) |
+| TAR (bzip2)  | `.tar.bz2`                       | `tarfile` (stdlib) |
+| TAR (xz)     | `.tar.xz`                        | `tarfile` (stdlib) |
+| TAR (uncomp) | `.tar`                           | `tarfile` (stdlib) |
+| 7-Zip        | `.7z`                            | `py7zr`            |
 
-| Argument               | Default             | Description                           |
-|------------------------|---------------------|---------------------------------------|
-| `input_dir`            | `.` (current dir)   | Directory containing your `.zip` files|
-| `-o` / `--output`      | `paperless_ready` | Where to place extracted documents    |
-| `-c` / `--config`      | `config.json`       | Path to configuration file            |
-| `-v` / `--verbose`     | —                   | Enable debug logging                  |
-
-### Examples
-
-```bash
-# Extract from the current directory
-uv run python main.py
-
-# Specify a Takeout directory
-uv run python main.py ~/Downloads/Takeout
-
-# Custom output + custom config
-uv run python main.py ~/Downloads/Takeout -o ~/Documents/to_import -c my_config.json
-
-# Verbose logging
-uv run python main.py -v
-```
-
-## Installation
+## Quick start
 
 ```bash
 git clone https://github.com/viscory/takeout2paperless.git
 cd takeout2paperless
 uv sync
+
+# Copy the example config and edit it to your needs
+cp config/example.toml config.toml
+
+# Run it
+uv run python -m takeout2paperless
 ```
 
 Requires Python 3.14+ and [uv](https://docs.astral.sh/uv/).
 
 ## Configuration
 
-All skip rules live in `config.json`:
+Everything is driven by `config.toml` at the project root.  There are
+**no command-line arguments**.
 
-```json
-{
-  "target_extensions": [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"],
-  "exclude_directories": {
-    "google photos": true,
-    "trash": true
-  },
-  "exclude_filename_patterns": [
-    "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf)(?:_\\d{1,3})?\\.pdf$"
-  ]
-}
+A fully annotated example lives at [`config/example.toml`](config/example.toml) —
+copy it and customise:
+
+```toml
+input_dir = "."
+output_dir = "paperless_ready"
+
+target_extensions = [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"]
+
+[exclude.directories]
+"google photos" = true
+trash = true
+
+[exclude.filename_patterns]
+# "exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf)(?:_\\d{1,3})?\\.pdf$"
+
+dry_run = false
+fingerprint = false
 ```
 
-| Key | Description |
-|-----|-------------|
-| `target_extensions` | File extensions to extract. Everything else is skipped. |
-| `exclude_directories` | Map of directory names to boolean. Set any to `false` to allow files in that path. |
-| `exclude_filename_patterns` | List of regex patterns. Files whose filenames match any pattern are skipped. |
+### All config keys
 
-### Example: only block Trash, nothing else
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `input_dir` | string | `"."` | Directory containing your archive files |
+| `output_dir` | string | `"paperless_ready"` | Where to place extracted documents |
+| `target_extensions` | list of strings | `.pdf`, `.docx`, … | File extensions to extract (case-insensitive) |
+| `[exclude.directories]` | table | — | Map of path fragments to boolean. `true` = skip files whose path contains this fragment. Omit or set to `false` to allow. |
+| `[exclude.filename_patterns]` | table | — | Map of named regex patterns. Files whose **filename** matches any pattern are skipped (case-insensitive). |
+| `dry_run` | boolean | `false` | When `true`, no files are written. Useful for testing your rules. |
+| `fingerprint` | boolean | `false` | When `true`, the original directory path is encoded into the filename (e.g. `Takeout_Drive_Documents_report.pdf`) |
 
-```json
-{
-  "exclude_directories": {
-    "google photos": false,
-    "trash": true
-  },
-  "exclude_filename_patterns": []
-}
+### Example: fingerprint to distinguish sources
+
+```toml
+fingerprint = true
 ```
 
-> **Note**: Regex patterns are compiled case-insensitively. Backslashes in JSON need to be escaped (`\\d` instead of `\d`). The `config.json` in this repo contains an example pattern — remove it or replace it with your own.
+```
+Takeout/Drive/Documents/report.pdf  →  Takeout_Drive_Documents_report.pdf
+Takeout/Drive/Invoices/report.pdf   →  Takeout_Drive_Invoices_report.pdf
+```
+
+### Example: only block Trash, allow Google Photos
+
+```toml
+[exclude.directories]
+"google photos" = false
+trash = true
+```
+
+### Example: block files by custom naming convention
+
+```toml
+[exclude.filename_patterns]
+"thumbnails" = "^thumb_.*\\.jpg$"
+"system-files" = "\\.DS_Store$"
+```
+
+## Development
+
+```bash
+uv sync --extra dev
+
+# Run tests
+uv run pytest -v
+
+# Type-check
+uv run mypy src/
+
+# Lint
+uv run ruff check src/ tests/
+```
+
+## Project layout
+
+```
+takeout2paperless/
+├── config.toml                 # Your config (loaded at runtime)
+├── config/
+│   └── example.toml            # Annotated example with every option explained
+├── src/takeout2paperless/
+│   ├── __init__.py
+│   ├── __main__.py             # python -m takeout2paperless
+│   ├── config.py               # Config loading & validation (TOML)
+│   ├── archive.py              # Unified .zip / .tar.* / .7z reader
+│   ├── extractor.py            # Core extraction + fingerprint logic
+│   ├── reporter.py             # Rich report rendering
+│   └── cli.py                  # Entry point
+├── tests/
+│   ├── conftest.py             # Generates small archives in all 3 formats
+│   ├── test_config.py
+│   ├── test_archive.py
+│   └── test_extractor.py
+└── pyproject.toml
+```
