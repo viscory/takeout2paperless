@@ -1,0 +1,11 @@
+[project]
+name = "takeout2paperless"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "py7zr>=1.1.3",
+    "ruff>=0.15.20",
+    "rich>=13.0.0",
+]
