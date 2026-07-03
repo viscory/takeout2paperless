@@ -31,6 +31,6 @@ fingerprint = true
 
 [exclude.filename_patterns]
 # Cambridge / CIE-style exam PDFs plus specimen/frequently-asked variants
-"exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf|fq|sw)(?:_\\d{1,3})?(?:\\s*\\(\\d+\\))?\\.pdf$"
+"exam-papers" = "^\\d{4}_[a-z]{1,3}\\d{0,2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf|fq|sw|ab)(?:_\\d{1,3})?(?:\\s*\\(\\d+\\))?\\.pdf$"
 # Google Takeout telemetry CSV exports
 "telemetry-csv" = "^open-telemetry.*\\.csv$"
