@@ -1,4 +1,4 @@
-"""Entry point — invoked by ``python -m takeout2paperless``."""
+"""Entry point — invoked by ``python -m paperless_py``."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ import sys
 
 from rich.console import Console
 
-from takeout2paperless.config import Config
-from takeout2paperless.extractor import TakeoutExtractor
+from paperless_py.config import Config
+from paperless_py.extractor import TakeoutExtractor
 
 
 def main() -> None:

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from takeout2paperless.archive import (
+from paperless_py.archive import (
     count_entries,
     detect_format,
     iter_archive,

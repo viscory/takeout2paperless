@@ -1,5 +1,5 @@
 [project]
-name = "takeout2paperless"
+name = "paperless-py"
 version = "0.3.0"
 description = "Extract documents from Google Takeout archives for Paperless-ngx"
 readme = "README.md"
@@ -17,7 +17,7 @@ dev = [
 ]
 
 [project.scripts]
-takeout2paperless = "takeout2paperless.cli:main"
+paperless-py = "paperless_py.cli:main"
 
 [build-system]
 requires = ["hatchling"]

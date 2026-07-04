@@ -8,16 +8,16 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from takeout2paperless.archive import (
+from paperless_py.archive import (
     SUPPORTED_FORMATS,
     ArchiveEntry,
     detect_format,
     iter_archive,
 )
-from takeout2paperless.reporter import Report
+from paperless_py.reporter import Report
 
 if TYPE_CHECKING:
-    from takeout2paperless.config import Config
+    from paperless_py.config import Config
 
 _logger = logging.getLogger(__name__)
 

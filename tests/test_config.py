@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from takeout2paperless.config import Config
+from paperless_py.config import Config
 
 
 class TestConfigDefaults:

@@ -1,5 +1,5 @@
 # ────────────────────────────────────────────────────────────────────
-# takeout2paperless — example configuration file
+# paperless-py — example configuration file
 # ────────────────────────────────────────────────────────────────────
 # Copy this file to ../config.toml (one level up, the project root)
 # and customise it.  All settings live here; there are no CLI flags

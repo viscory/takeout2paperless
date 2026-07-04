@@ -21,8 +21,8 @@
 **Files changed:**
 - `config.toml`
 - `config/example.toml`
-- `src/takeout2paperless/config.py`
-- `src/takeout2paperless/extractor.py`
+- `src/paperless_py/config.py`
+- `src/paperless_py/extractor.py`
 - `tests/test_config.py`
 - `tests/test_extractor.py`
 - `CHANGELOG.md` (created)
@@ -46,8 +46,8 @@
 - Updated `config.py`, `cli.py`, `config.toml`, `example.toml`, and all tests.
 
 **Files changed:**
-- `src/takeout2paperless/cli.py`
-- `src/takeout2paperless/config.py`
+- `src/paperless_py/cli.py`
+- `src/paperless_py/config.py`
 - `config.toml`
 - `config/example.toml`
 - `tests/test_extractor.py`
@@ -70,8 +70,8 @@
 - Updated `config.toml` and `example.toml` with the new regex patterns.
 
 **Files changed:**
-- `src/takeout2paperless/cli.py`
-- `src/takeout2paperless/config.py`
+- `src/paperless_py/cli.py`
+- `src/paperless_py/config.py`
 - `config.toml`
 - `config/example.toml`
 - `CHANGELOG.md`
@@ -98,10 +98,10 @@
 - Documented dotfile/extensionless skip and 7z scratch-disk requirement in README.
 
 **Files changed:**
-- `src/takeout2paperless/config.py`
-- `src/takeout2paperless/extractor.py`
-- `src/takeout2paperless/archive.py`
-- `src/takeout2paperless/cli.py`
+- `src/paperless_py/config.py`
+- `src/paperless_py/extractor.py`
+- `src/paperless_py/archive.py`
+- `src/paperless_py/cli.py`
 - `tests/test_config.py`
 - `tests/test_extractor.py`
 - `.gitignore`
@@ -124,7 +124,7 @@
 - Updated example.toml and README docs.
 
 **Files changed:**
-- `src/takeout2paperless/config.py`
+- `src/paperless_py/config.py`
 - `tests/test_config.py`
 - `config/example.toml`
 - `README.md`
@@ -152,19 +152,19 @@
 
 ## 2026-07-04 — Entry 008
 
-**Trigger:** User asked to publish takeout2paperless as a package so `brain/scripts` can depend on it.
+**Trigger:** User asked to publish paperless-py as a package so `brain/scripts` can depend on it.
 
 **What happened:**
 - Exported `Config`, `TakeoutExtractor`, `Report` from `__init__.py` for library use.
 - Bumped version to 0.3.0.
 - Built wheel and sdist: `uv build`.
-- Added `takeout2paperless` as a path dependency in `brain/scripts/pyproject.toml` via `[tool.uv.sources]`.
-- Added `takeout-extract` console script in `brain/scripts` pointing to `takeout2paperless.cli:main`.
+- Added `paperless-py` as a path dependency in `brain/scripts/pyproject.toml` via `[tool.uv.sources]`.
+- Added `takeout-extract` console script in `brain/scripts` pointing to `paperless_py.cli:main`.
 - Verified `uv sync` resolves and installs the package in brain/scripts venv.
-- Verified `uv run takeout-extract --help` and `from takeout2paperless import Config` both work.
+- Verified `uv run takeout-extract --help` and `from paperless_py import Config` both work.
 
 **Files changed:**
-- `src/takeout2paperless/__init__.py`
+- `src/paperless_py/__init__.py`
 - `pyproject.toml` (version bump)
 - `dist/` (wheel + sdist built)
 - `brain/scripts/pyproject.toml`
@@ -192,9 +192,9 @@
 - Updated `config.toml`, `example.toml`, `config.py`, `extractor.py`, `cli.py`, tests, and README.
 
 **Files changed:**
-- `src/takeout2paperless/config.py`
-- `src/takeout2paperless/extractor.py`
-- `src/takeout2paperless/cli.py`
+- `src/paperless_py/config.py`
+- `src/paperless_py/extractor.py`
+- `src/paperless_py/cli.py`
 - `config.toml`
 - `config/example.toml`
 - `tests/test_config.py`

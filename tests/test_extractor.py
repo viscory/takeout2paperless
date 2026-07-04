@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from takeout2paperless.config import Config
-from takeout2paperless.extractor import TakeoutExtractor
+from paperless_py.config import Config
+from paperless_py.extractor import TakeoutExtractor
 
 
 class TestExtractorDryRun:

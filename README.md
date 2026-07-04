@@ -1,4 +1,4 @@
-# takeout2paperless
+# paperless-py
 
 Extract documents from Google Takeout archives for import into
 [Paperless-ngx](https://docs.paperless-ngx.com/).
@@ -29,17 +29,17 @@ directories.  This tool:
 ## Quick start
 
 ```bash
-git clone https://github.com/viscory/takeout2paperless.git
-cd takeout2paperless
+git clone https://github.com/viscory/paperless-py.git
+cd paperless-py
 uv sync
 
 # Copy the example config and edit it to your needs
 cp config/example.toml config.toml
 
 # Run it
-uv run python -m takeout2paperless
+uv run python -m paperless_py
 # or, from anywhere:
-takeout2paperless --config /path/to/config.toml
+paperless-py --config /path/to/config.toml
 ```
 
 Requires Python 3.14+ and [uv](https://docs.astral.sh/uv/).
@@ -166,13 +166,13 @@ uv run ruff check src/ tests/
 ## Project layout
 
 ```
-takeout2paperless/
+paperless-py/
 ├── config.toml                 # Your local config (gitignored)
 ├── config/
 │   └── example.toml            # Annotated example with every option explained
-├── src/takeout2paperless/
+├── src/paperless_py/
 │   ├── __init__.py
-│   ├── __main__.py             # python -m takeout2paperless
+│   ├── __main__.py             # python -m paperless_py
 │   ├── config.py               # Config loading & validation (TOML)
 │   ├── archive.py              # Unified .zip / .tar.* / .7z reader
 │   ├── extractor.py            # Core extraction + fingerprint logic

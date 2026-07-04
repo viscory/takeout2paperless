@@ -7,9 +7,9 @@ Public API:
     main                — CLI entry point
 """
 
-from takeout2paperless.cli import main
-from takeout2paperless.config import Config
-from takeout2paperless.extractor import TakeoutExtractor
-from takeout2paperless.reporter import Report
+from paperless_py.cli import main
+from paperless_py.config import Config
+from paperless_py.extractor import TakeoutExtractor
+from paperless_py.reporter import Report
 
 __all__ = ["main", "Config", "TakeoutExtractor", "Report"]
