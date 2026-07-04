@@ -148,6 +148,31 @@
 
 ---
 
+---
+
+## 2026-07-04 — Entry 008
+
+**Trigger:** User asked to publish takeout2paperless as a package so `brain/scripts` can depend on it.
+
+**What happened:**
+- Exported `Config`, `TakeoutExtractor`, `Report` from `__init__.py` for library use.
+- Bumped version to 0.3.0.
+- Built wheel and sdist: `uv build`.
+- Added `takeout2paperless` as a path dependency in `brain/scripts/pyproject.toml` via `[tool.uv.sources]`.
+- Added `takeout-extract` console script in `brain/scripts` pointing to `takeout2paperless.cli:main`.
+- Verified `uv sync` resolves and installs the package in brain/scripts venv.
+- Verified `uv run takeout-extract --help` and `from takeout2paperless import Config` both work.
+
+**Files changed:**
+- `src/takeout2paperless/__init__.py`
+- `pyproject.toml` (version bump)
+- `dist/` (wheel + sdist built)
+- `brain/scripts/pyproject.toml`
+
+**Why:** The tool started as a standalone script but the user wants to orchestrate it from their brain automation suite. Publishing as a proper package with a public API (`Config`, `TakeoutExtractor`, `Report`) makes it composable — brain scripts can import and drive it programmatically, not just shell out to it.
+
+---
+
 ## 2026-07-04 — Entry 007
 
 **Trigger:** User said the config sectioning didn't make sense and asked for better organization, comments, and a few easy new features.

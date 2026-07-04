@@ -1,6 +1,6 @@
 [project]
 name = "takeout2paperless"
-version = "0.2.0"
+version = "0.3.0"
 description = "Extract documents from Google Takeout archives for Paperless-ngx"
 readme = "README.md"
 requires-python = ">=3.14"
