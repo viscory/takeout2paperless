@@ -26,6 +26,10 @@ dry_run = false
 # instead of just ``report.pdf``.
 fingerprint = false
 
+# Character(s) used to join path components when fingerprinting.
+# Default is "_".  Use any string you like — no restrictions.
+# fingerprint_delimiter = "_"
+
 
 [filter]
 

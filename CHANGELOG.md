@@ -114,6 +114,28 @@
 
 ## 2026-07-04 — Entry 005
 
+**Trigger:** User said the `fingerprint_delimiter` validation is too restrictive — they don't want to be forced to use `_`.
+
+**What happened:**
+- Removed all character restrictions on `fingerprint_delimiter`.
+- It now accepts any string (including multi-character tokens like `__` or `→`).
+- Only fallback is when the value is not a string at all (e.g. a number).
+- Updated tests to verify multi-character delimiters work.
+- Updated example.toml and README docs.
+
+**Files changed:**
+- `src/takeout2paperless/config.py`
+- `tests/test_config.py`
+- `config/example.toml`
+- `README.md`
+- `CHANGELOG.md`
+
+**Why:** The user wants full freedom. If they want `→` or `__` or `·` as their delimiter, that's their choice. No paternalistic "safe character" restrictions.
+
+---
+
+## 2026-07-04 — Entry 006
+
 **Trigger:** User asked to close the addressed GitHub issues now that fixes are in master.
 
 **What happened:**

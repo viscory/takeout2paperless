@@ -101,14 +101,14 @@ class TestConfigOverrides:
         cfg = Config.load(str(p))
         assert cfg.fingerprint_delimiter == "-"
 
-    def test_invalid_fingerprint_delimiter(self, tmp_path: Path) -> None:
+    def test_fingerprint_delimiter_multi_char(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
-        p.write_text('[takeout2paperless]\nfingerprint_delimiter = "/"\n')
+        p.write_text('[takeout2paperless]\nfingerprint_delimiter = "__"\n')
         cfg = Config.load(str(p))
-        assert cfg.fingerprint_delimiter == "_"  # falls back to safe default
+        assert cfg.fingerprint_delimiter == "__"
 
-    def test_fingerprint_delimiter_not_single_char(self, tmp_path: Path) -> None:
+    def test_fingerprint_delimiter_non_string_fallback(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
-        p.write_text('[takeout2paperless]\nfingerprint_delimiter = "abc"\n')
+        p.write_text("[takeout2paperless]\nfingerprint_delimiter = 123\n")
         cfg = Config.load(str(p))
         assert cfg.fingerprint_delimiter == "_"

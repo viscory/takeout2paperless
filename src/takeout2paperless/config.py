@@ -75,16 +75,10 @@ class Config:
         dry_run = bool(app.get("dry_run", False))
         fingerprint = bool(app.get("fingerprint", False))
 
-        # Fingerprint delimiter validation
+        # Fingerprint delimiter (any string the user wants)
         _delimiter = app.get("fingerprint_delimiter", "_")
-        if not isinstance(_delimiter, str) or len(_delimiter) != 1:
-            _logger.warning("fingerprint_delimiter must be a single character, using '_'")
-            _delimiter = "_"
-        elif _delimiter not in string.ascii_letters + string.digits + "-_.":
-            _logger.warning(
-                "fingerprint_delimiter '%s' is not safe (use a-z, A-Z, 0-9, -, _, .), using '_'",
-                _delimiter,
-            )
+        if not isinstance(_delimiter, str):
+            _logger.warning("fingerprint_delimiter must be a string, using '_'")
             _delimiter = "_"
 
         # ── [filter] ─────────────────────────────────────────────────

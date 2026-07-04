@@ -77,7 +77,7 @@ ban = [
 | `input_dir` | string | `"."` | Directory containing your archive files |
 | `output_dir` | string | `"paperless_ready"` | Where to place extracted documents |
 | `fingerprint` | boolean | `false` | Encode original directory path into filename |
-| `fingerprint_delimiter` | string | `"_"` | Character joining path components when fingerprinting |
+| `fingerprint_delimiter` | string | `"_"` | String joining path components when fingerprinting. Any value is allowed. |
 | `dry_run` | boolean | `false` | When `true`, no files are written |
 | `filter.include_extensions` | list | `.pdf`, `.docx`, … | File extensions to extract (always case-insensitive) |
 | `exclude.ban` | list of strings | `(?i)google photos`, `(?i)trash` | Regex patterns. Checked against filename **and** full archive path. |
