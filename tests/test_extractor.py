@@ -19,7 +19,6 @@ class TestExtractorDryRun:
             ban=(),
             dry_run=True,
             fingerprint=False,
-            paperless_consume_cmd=None,
         )
         report = TakeoutExtractor(cfg).run()
         assert report.processed > 0
@@ -34,7 +33,6 @@ class TestExtractorDryRun:
             ban=(),
             dry_run=True,
             fingerprint=False,
-            paperless_consume_cmd=None,
         )
         report = TakeoutExtractor(cfg).run()
         assert report.skipped > 0
@@ -52,7 +50,6 @@ class TestExtractorFiltering:
             ban=(__import__("re").compile("google photos", __import__("re").IGNORECASE),),
             dry_run=True,
             fingerprint=False,
-            paperless_consume_cmd=None,
         )
         report = TakeoutExtractor(cfg).run()
         assert report.skip_reasons.get("Banned pattern", 0) > 0
@@ -65,7 +62,6 @@ class TestExtractorFiltering:
             ban=(),
             dry_run=True,
             fingerprint=False,
-            paperless_consume_cmd=None,
         )
         report = TakeoutExtractor(cfg).run()
         assert report.skip_reasons.get("Banned pattern", 0) == 0
@@ -86,7 +82,6 @@ class TestExtractorIntegration:
             ),
             dry_run=True,
             fingerprint=False,
-            paperless_consume_cmd=None,
         )
         report = TakeoutExtractor(cfg).run()
 

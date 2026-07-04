@@ -40,10 +40,6 @@ class Config:
     # Whether to encode the original directory path into the filename
     fingerprint: bool
 
-    # Optional: command to run for Paperless consumption after extraction.
-    # {output_dir} is substituted with the absolute output directory path.
-    paperless_consume_cmd: str | None
-
     # ── Factory ─────────────────────────────────────────────────────
 
     @classmethod
@@ -82,12 +78,6 @@ class Config:
             _logger.warning("filter.include_extensions must be a list, falling back to defaults")
             exts = [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"]
 
-        # ── [paperless] ──────────────────────────────────────────────
-        paperless_cfg = raw.get("paperless", {})
-        consume_cmd = paperless_cfg.get("consume_cmd")
-        if not isinstance(consume_cmd, str):
-            consume_cmd = None
-
         # ── [exclude] ────────────────────────────────────────────────
         exclude_cfg = raw.get("exclude", {})
 
@@ -121,5 +111,4 @@ class Config:
             ban=tuple(compiled),
             dry_run=dry_run,
             fingerprint=fingerprint,
-            paperless_consume_cmd=consume_cmd,
         )

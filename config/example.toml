@@ -42,28 +42,20 @@ include_extensions = [
 ]
 
 
-[paperless]
-
-# Optional: command to run after extraction when the user confirms.
-# {output_dir} is substituted with the absolute output directory path.
-# If unset, the program prints a hint instead of running anything.
-#
-# Example for Docker-based Paperless-ngx:
-# consume_cmd = "docker compose -f ~/homelab/paperless-ngx/docker-compose.yml exec webserver python manage.py document_consumer {output_dir}"
-
-
 [exclude]
 
 # Unified ban list.
 # Every entry is compiled as a case-insensitive regex and checked
 # against BOTH the filename and the full archive path.
 #
-# Simple strings like "trash" will match anywhere in the path.
-# Regexes like "^\\d{4}_.*\\.pdf$" will match the filename only
-# (the ^ anchor prevents accidental full-path matches).
+# Directory patterns should use (?:^|/)name(?:/|$) so they only match
+# as actual path components, not accidental substrings.
+#
+# Filename patterns should use ^ anchors to avoid matching inside paths.
 #
 # If you omit this key entirely, built-in defaults kick in:
-#   ban = ["google photos", "trash"]
+#   ban = ["(?:^|/)google photos(?:/|$)", "(?:^|/)trash(?:/|$)"]
 ban = [
-    # "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf)(?:_\\d{1,3})?\\.pdf$",
+    # "(?:^|/)google photos(?:/|$)",
+    # "(?:^|/)trash(?:/|$)",
 ]

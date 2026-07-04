@@ -54,3 +54,26 @@
 - `CHANGELOG.md`
 
 **Why:** Manual extraction is only half the workflow — getting files into Paperless is the goal. A prompt at the end of the run removes the need to remember a separate command. Making it optional (default No) and configurable keeps the tool unopinionated while still convenient for the user's Docker-based Paperless setup.
+
+---
+
+## 2026-07-04 — Entry 003
+
+**Trigger:** User said "fuck the cli" — they want the tool to just extract files without any post-run prompt. They also wanted all directory ban entries converted to proper regex patterns.
+
+**What happened:**
+- Reverted `cli.py` back to a simple extractor run — no Paperless prompt.
+- Removed `paperless_consume_cmd` from `Config` dataclass and parser entirely.
+- Converted all directory names in `ban` to regex patterns using `(?:^|/)name(?:/|$)`.
+  This ensures "config" only matches `.config/` or `config/` as a path component,
+  not `myconfig.txt` or `reconfigurable`.
+- Updated `config.toml` and `example.toml` with the new regex patterns.
+
+**Files changed:**
+- `src/takeout2paperless/cli.py`
+- `src/takeout2paperless/config.py`
+- `config.toml`
+- `config/example.toml`
+- `CHANGELOG.md`
+
+**Why:** The user wants a simple unix-style tool: do one thing (extract), do it well, exit. No interactive prompts. Regex patterns for directories prevent false positives where a directory name happens to appear inside a filename or another directory name.
