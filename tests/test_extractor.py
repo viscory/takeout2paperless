@@ -20,6 +20,9 @@ class TestExtractorDryRun:
             dry_run=True,
             fingerprint=False,
             fingerprint_delimiter="_",
+            flatten=True,
+            collision="rename",
+            log_level="INFO",
         )
         report = TakeoutExtractor(cfg).run()
         assert report.processed > 0
@@ -35,6 +38,9 @@ class TestExtractorDryRun:
             dry_run=True,
             fingerprint=False,
             fingerprint_delimiter="_",
+            flatten=True,
+            collision="rename",
+            log_level="INFO",
         )
         report = TakeoutExtractor(cfg).run()
         assert report.skipped > 0
@@ -53,6 +59,9 @@ class TestExtractorFiltering:
             dry_run=True,
             fingerprint=False,
             fingerprint_delimiter="_",
+            flatten=True,
+            collision="rename",
+            log_level="INFO",
         )
         report = TakeoutExtractor(cfg).run()
         assert report.skip_reasons.get("Banned pattern", 0) > 0
@@ -66,6 +75,9 @@ class TestExtractorFiltering:
             dry_run=True,
             fingerprint=False,
             fingerprint_delimiter="_",
+            flatten=True,
+            collision="rename",
+            log_level="INFO",
         )
         report = TakeoutExtractor(cfg).run()
         assert report.skip_reasons.get("Banned pattern", 0) == 0
@@ -87,6 +99,9 @@ class TestExtractorIntegration:
             dry_run=True,
             fingerprint=False,
             fingerprint_delimiter="_",
+            flatten=True,
+            collision="rename",
+            log_level="INFO",
         )
         report = TakeoutExtractor(cfg).run()
 
@@ -118,6 +133,9 @@ class TestExtractorFingerprint:
             dry_run=True,
             fingerprint=True,
             fingerprint_delimiter="_",
+            flatten=True,
+            collision="rename",
+            log_level="INFO",
         )
         report = TakeoutExtractor(cfg).run()
 
@@ -134,6 +152,9 @@ class TestExtractorFingerprint:
             dry_run=True,
             fingerprint=True,
             fingerprint_delimiter="-",
+            flatten=True,
+            collision="rename",
+            log_level="INFO",
         )
         report = TakeoutExtractor(cfg).run()
 
@@ -149,6 +170,9 @@ class TestExtractorFingerprint:
             dry_run=False,
             fingerprint=True,
             fingerprint_delimiter="_",
+            flatten=True,
+            collision="rename",
+            log_level="INFO",
         )
         report = TakeoutExtractor(cfg).run()
         # There are multiple .pdf files but they come from different dirs,

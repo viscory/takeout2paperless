@@ -1,11 +1,17 @@
 # ────────────────────────────────────────────────────────────────────
-# takeout2paperless — configuration file
+# takeout2paperless — example configuration file
 # ────────────────────────────────────────────────────────────────────
 # Copy this file to ../config.toml (one level up, the project root)
-# and customise it.  All settings live here; there are no CLI flags.
+# and customise it.  All settings live here; there are no CLI flags
+# except an optional --config PATH.
 # ────────────────────────────────────────────────────────────────────
 
-[takeout2paperless]
+
+# ═══════════════════════════════════════════════════════════════════
+# [paths] — where to read archives and where to write documents
+# ═══════════════════════════════════════════════════════════════════
+
+[paths]
 
 # Directory containing your Google Takeout archive files.
 # The tool scans this folder for .zip, .tar.*, and .7z files.
@@ -14,28 +20,16 @@ input_dir = "."
 # Where extracted documents will be written (created if missing).
 output_dir = "paperless_ready"
 
-# When true, no files are written.  Useful for testing your rules.
-dry_run = false
 
-# When true, the original directory path is encoded into the filename
-# so you can distinguish files from different folders.
-#
-#   e.g. Takeout/Drive/Documents/report.pdf
-#        → Takeout_Drive_Documents_report.pdf
-#
-# instead of just ``report.pdf``.
-fingerprint = false
+# ═══════════════════════════════════════════════════════════════════
+# [include] — which file types to keep
+# ═══════════════════════════════════════════════════════════════════
 
-# Character(s) used to join path components when fingerprinting.
-# Default is "_".  Use any string you like — no restrictions.
-# fingerprint_delimiter = "_"
-
-
-[filter]
+[include]
 
 # Only files with these extensions are extracted.
 # Everything else is silently skipped.
-include_extensions = [
+extensions = [
     ".pdf",
     ".docx",
     ".doc",
@@ -46,20 +40,69 @@ include_extensions = [
 ]
 
 
+# ═══════════════════════════════════════════════════════════════════
+# [exclude] — regex patterns that ban files
+# ═══════════════════════════════════════════════════════════════════
+
 [exclude]
 
-# Unified ban list.
-# Every entry is compiled as a case-insensitive regex and checked
-# against BOTH the filename and the full archive path.
+# Every entry is compiled as a regex and checked against BOTH the
+# filename and the full archive path.
 #
-# Directory patterns should use (?:^|/)name(?:/|$) so they only match
-# as actual path components, not accidental substrings.
-#
-# Filename patterns should use ^ anchors to avoid matching inside paths.
+# • Add (?i) at the start of a pattern for case-insensitive matching.
+# • Directory patterns should use (?:^|/)name(?:/|$) so they match
+#   only as path components, not substrings inside filenames.
+# • Filename patterns should use ^ anchors to avoid matching inside
+#   a full path.
 #
 # If you omit this key entirely, built-in defaults kick in:
-#   ban = ["(?:^|/)google photos(?:/|$)", "(?:^|/)trash(?:/|$)"]
-ban = [
-    # "(?:^|/)google photos(?:/|$)",
-    # "(?:^|/)trash(?:/|$)",
+#   patterns = ["(?i)(?:^|/)google photos(?:/|$)", "(?i)(?:^|/)trash(?:/|$)"]
+patterns = [
+    # "(?i)(?:^|/)google photos(?:/|$)",
+    # "(?i)(?:^|/)trash(?:/|$)",
 ]
+
+
+# ═══════════════════════════════════════════════════════════════════
+# [output] — how extracted files are written
+# ═══════════════════════════════════════════════════════════════════
+
+[output]
+
+# When true, no files are written.  Useful for testing your rules.
+dry_run = false
+
+# When true, the original directory path is encoded into the filename
+# so you can tell where each file came from.
+#
+#   e.g. Takeout/Drive/Documents/report.pdf
+#        → Takeout_Drive_Documents_report.pdf
+#
+# instead of just ``report.pdf``.
+fingerprint = false
+
+# Character(s) used to join path components when fingerprinting.
+# Any string is allowed — multi-character tokens work fine.
+fingerprint_delimiter = "_"
+
+# When true (default), all files land directly in output_dir with
+# unique flat names.  When false, the original archive directory
+# structure is preserved under output_dir.
+flatten = true
+
+# What to do when the output path already exists.
+#   rename    — append _1, _2, …  (default)
+#   skip      — do not extract the file
+#   overwrite — replace the existing file
+collision = "rename"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# [runtime] — execution behaviour
+# ═══════════════════════════════════════════════════════════════════
+
+[runtime]
+
+# Logging verbosity.  DEBUG shows every file decision; INFO shows
+# archives and summary; WARN/ERROR are quieter.
+log_level = "INFO"   # DEBUG | INFO | WARN | ERROR

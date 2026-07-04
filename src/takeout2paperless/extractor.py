@@ -28,6 +28,7 @@ class TakeoutExtractor:
     def __init__(self, config: Config) -> None:
         self._config = config
         self._name_counter: dict[str, int] = defaultdict(int)
+        self._seen_paths: set[Path] = set()
         self._report = Report(output_dir=str(config.output_dir))
 
     # ── Public API ─────────────────────────────────────────────────
@@ -110,9 +111,6 @@ class TakeoutExtractor:
                 total=None,
             )
 
-            # Lazily iterate — never materialise all entries in RAM.
-            # The archive handle stays open while we step through;
-            # each entry streams its content chunk-by-chunk.
             try:
                 entries = iter_archive(path)
             except Exception:
@@ -132,9 +130,15 @@ class TakeoutExtractor:
                     file_progress.advance(file_task)
                     continue
 
-                out_path = self._unique_path(entry.path)
+                out_path = self._resolve_output_path(entry.path)
+                if out_path is None:
+                    self._report.record_skip("Collision (skip)", entry.path)
+                    file_progress.advance(file_task)
+                    continue
+
                 try:
                     if not self._config.dry_run:
+                        out_path.parent.mkdir(parents=True, exist_ok=True)
                         entry.write_to(out_path)
                     self._report.record_processed(out_path.name)
                     local_ok += 1
@@ -155,7 +159,7 @@ class TakeoutExtractor:
         lower = entry.path.lower()
         name = Path(entry.path).name
 
-        # 1. Unified ban list — each pattern is checked against filename AND full path
+        # 1. Unified ban list
         for pat in self._config.ban:
             if pat.search(name) or pat.search(entry.path):
                 return False, "Banned pattern"
@@ -167,12 +171,10 @@ class TakeoutExtractor:
 
         return True, "Target document"
 
-    def _unique_path(self, original_name: str) -> Path:
-        """Build a flat output path, appending ``_N`` on collisions.
+    def _resolve_output_path(self, original_name: str) -> Path | None:
+        """Build the output path, applying fingerprint, flatten, and collision rules.
 
-        When ``fingerprint`` is enabled in config, the original directory
-        path is encoded into the filename so you can tell where the file
-        came from (e.g. ``Takeout_Drive_Documents_report.pdf``).
+        Returns *None* when collision strategy is "skip" and the file already exists.
         """
         p = Path(original_name)
         basename = p.name
@@ -185,8 +187,44 @@ class TakeoutExtractor:
                 safe = "".join(c if c in safe_chars else delim for c in parent.as_posix())
                 basename = f"{safe}{delim}{basename}"
 
+        if self._config.flatten:
+            out_path = self._config.output_dir / basename
+        else:
+            # Preserve original directory structure under output_dir
+            out_path = self._config.output_dir / original_name
+
+        if out_path in self._seen_paths:
+            # We've already processed this exact path this run
+            return self._handle_collision(out_path, basename)
+
+        if not out_path.exists():
+            self._seen_paths.add(out_path)
+            return out_path
+
+        return self._handle_collision(out_path, basename)
+
+    def _handle_collision(self, out_path: Path, basename: str) -> Path | None:
+        """Apply the configured collision strategy."""
+        strategy = self._config.collision
+
+        if strategy == "skip":
+            return None
+
+        if strategy == "overwrite":
+            self._seen_paths.add(out_path)
+            return out_path
+
+        # strategy == "rename" (default)
         stem, ext = Path(basename).stem, Path(basename).suffix
         count = self._name_counter[basename]
         self._name_counter[basename] += 1
 
-        return self._config.output_dir / (basename if count == 0 else f"{stem}_{count}{ext}")
+        if count == 0:
+            resolved = out_path
+        else:
+            resolved = self._config.output_dir / f"{stem}_{count}{ext}"
+            if not self._config.flatten:
+                resolved = out_path.parent / f"{stem}_{count}{ext}"
+
+        self._seen_paths.add(resolved)
+        return resolved

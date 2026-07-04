@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 
 from rich.console import Console
@@ -17,6 +18,12 @@ def main() -> None:
     args = parser.parse_args()
 
     config = Config.load(args.config)
+
+    # Configure logging level from config
+    logging.basicConfig(
+        level=getattr(logging, config.log_level),
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
 
     try:
         TakeoutExtractor(config).run()

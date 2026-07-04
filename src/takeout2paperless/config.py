@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import re
-import string
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,26 +24,27 @@ def _resolve_path(raw: str, anchor: Path | None = None) -> Path:
 class Config:
     """Immutable validated configuration."""
 
-    # Directories
+    # ── [paths] ────────────────────────────────────────────────────
     input_dir: Path
     output_dir: Path
 
-    # Target extensions (lowercase, with dot)
+    # ── [include] ──────────────────────────────────────────────────
     target_extensions: frozenset[str]
 
-    # Unified ban list — every pattern is compiled as a regex
-    # and checked against both the filename and the full archive path.
+    # ── [exclude] ──────────────────────────────────────────────────
+    # Unified ban list — every pattern is compiled as a regex and
+    # checked against both the filename and the full archive path.
     ban: tuple[Pattern[str], ...]
 
-    # Whether to skip actual file writes
+    # ── [output] ─────────────────────────────────────────────────
     dry_run: bool
-
-    # Whether to encode the original directory path into the filename
     fingerprint: bool
-
-    # Character used to join path components when fingerprinting.
-    # Must be a single ASCII letter, digit, hyphen, underscore, or period.
     fingerprint_delimiter: str
+    flatten: bool
+    collision: str  # "rename" | "skip" | "overwrite"
+
+    # ── [runtime] ────────────────────────────────────────────────
+    log_level: str
 
     # ── Factory ─────────────────────────────────────────────────────
 
@@ -68,40 +68,29 @@ class Config:
 
         anchor = p.parent if p.exists() else None
 
-        # ── [takeout2paperless] ──────────────────────────────────────
-        app = raw.get("takeout2paperless", {})
-        input_dir = _resolve_path(app.get("input_dir", "."), anchor)
-        output_dir = _resolve_path(app.get("output_dir", "paperless_ready"), anchor)
-        dry_run = bool(app.get("dry_run", False))
-        fingerprint = bool(app.get("fingerprint", False))
+        # ── [paths] ────────────────────────────────────────────────
+        paths_cfg = raw.get("paths", {})
+        input_dir = _resolve_path(paths_cfg.get("input_dir", "."), anchor)
+        output_dir = _resolve_path(paths_cfg.get("output_dir", "paperless_ready"), anchor)
 
-        # Fingerprint delimiter (any string the user wants)
-        _delimiter = app.get("fingerprint_delimiter", "_")
-        if not isinstance(_delimiter, str):
-            _logger.warning("fingerprint_delimiter must be a string, using '_'")
-            _delimiter = "_"
-
-        # ── [filter] ─────────────────────────────────────────────────
-        filter_cfg = raw.get("filter", {})
-        exts = filter_cfg.get(
-            "include_extensions",
+        # ── [include] ──────────────────────────────────────────────
+        include_cfg = raw.get("include", {})
+        exts = include_cfg.get(
+            "extensions",
             [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"],
         )
         if not isinstance(exts, list):
-            _logger.warning("filter.include_extensions must be a list, falling back to defaults")
+            _logger.warning("include.extensions must be a list, falling back to defaults")
             exts = [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"]
 
-        # ── [exclude] ────────────────────────────────────────────────
+        # ── [exclude] ──────────────────────────────────────────────
         exclude_cfg = raw.get("exclude", {})
 
-        # Default ban patterns — use (?i) for case-insensitive defaults
-        # so they work out of the box. User-supplied patterns must include
-        # (?i) themselves if they want case-insensitive matching.
         _default_ban = [
             r"(?i)(?:^|/)google photos(?:/|$)",
             r"(?i)(?:^|/)trash(?:/|$)",
         ]
-        ban_raw = exclude_cfg.get("ban", [])
+        ban_raw = exclude_cfg.get("patterns", [])
         if isinstance(ban_raw, list):
             entries = [e for e in ban_raw if isinstance(e, str)]
             if not entries:
@@ -109,7 +98,7 @@ class Config:
         elif isinstance(ban_raw, str):
             entries = [ban_raw]
         else:
-            _logger.warning("exclude.ban must be a string or list, using defaults")
+            _logger.warning("exclude.patterns must be a string or list, using defaults")
             entries = list(_default_ban)
 
         compiled: list[Pattern[str]] = []
@@ -117,7 +106,31 @@ class Config:
             try:
                 compiled.append(re.compile(raw_pat))
             except re.error as exc:
-                _logger.warning("Invalid ban regex '%s': %s — skipping", raw_pat, exc)
+                _logger.warning("Invalid exclude regex '%s': %s — skipping", raw_pat, exc)
+
+        # ── [output] ───────────────────────────────────────────────
+        output_cfg = raw.get("output", {})
+        dry_run = bool(output_cfg.get("dry_run", False))
+        fingerprint = bool(output_cfg.get("fingerprint", False))
+
+        _delimiter = output_cfg.get("fingerprint_delimiter", "_")
+        if not isinstance(_delimiter, str):
+            _logger.warning("output.fingerprint_delimiter must be a string, using '_'")
+            _delimiter = "_"
+
+        flatten = bool(output_cfg.get("flatten", True))
+
+        _collision = output_cfg.get("collision", "rename")
+        if _collision not in ("rename", "skip", "overwrite"):
+            _logger.warning("output.collision must be rename/skip/overwrite, using 'rename'")
+            _collision = "rename"
+
+        # ── [runtime] ──────────────────────────────────────────────
+        runtime_cfg = raw.get("runtime", {})
+        _log_level = runtime_cfg.get("log_level", "INFO")
+        if _log_level not in ("DEBUG", "INFO", "WARN", "ERROR"):
+            _logger.warning("runtime.log_level must be DEBUG/INFO/WARN/ERROR, using 'INFO'")
+            _log_level = "INFO"
 
         return cls(
             input_dir=input_dir,
@@ -127,4 +140,7 @@ class Config:
             dry_run=dry_run,
             fingerprint=fingerprint,
             fingerprint_delimiter=_delimiter,
+            flatten=flatten,
+            collision=_collision,
+            log_level=_log_level,
         )

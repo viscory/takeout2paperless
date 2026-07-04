@@ -145,3 +145,36 @@
 - GitHub issues (via `gh issue close`)
 
 **Why:** Issues that have been fixed in code should be closed so the tracker reflects reality and future contributors don't waste time re-reporting fixed problems.
+
+---
+
+## 2026-07-04 — Entry 007
+
+**Trigger:** User said the config sectioning didn't make sense and asked for better organization, comments, and a few easy new features.
+
+**What happened:**
+- Restructured config into 5 logical sections:
+  - `[paths]` — input_dir, output_dir
+  - `[include]` — extensions
+  - `[exclude]` — patterns (renamed from `ban` for clarity)
+  - `[output]` — fingerprint, fingerprint_delimiter, flatten, collision, dry_run
+  - `[runtime]` — log_level
+- Added `flatten` option (default true). When false, original archive directory structure is preserved under output_dir.
+- Added `collision` option (rename/skip/overwrite). Handles what happens when an output file already exists.
+- Added `log_level` option (DEBUG/INFO/WARN/ERROR). Sets Python logging level at startup.
+- Renamed `exclude.ban` → `exclude.patterns` for clarity.
+- Moved `dry_run` from `[takeout2paperless]` to `[output]` since it controls output behaviour.
+- Updated `config.toml`, `example.toml`, `config.py`, `extractor.py`, `cli.py`, tests, and README.
+
+**Files changed:**
+- `src/takeout2paperless/config.py`
+- `src/takeout2paperless/extractor.py`
+- `src/takeout2paperless/cli.py`
+- `config.toml`
+- `config/example.toml`
+- `tests/test_config.py`
+- `tests/test_extractor.py`
+- `README.md`
+- `CHANGELOG.md`
+
+**Why:** The old `[takeout2paperless]` / `[filter]` / `[exclude]` split was arbitrary. `[paths]`, `[include]`, `[exclude]`, `[output]`, `[runtime]` maps directly to what the user is thinking about: where are my files, what do I want, what do I skip, how should they look, and how should the tool behave. The new features (flatten, collision, log_level) are small additions that significantly improve flexibility without adding complexity.
