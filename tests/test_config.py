@@ -30,7 +30,7 @@ class TestConfigDefaults:
 
     def test_dry_run_flag(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
-        p.write_text("dry_run = true\n")
+        p.write_text("[takeout2paperless]\ndry_run = true\n")
         cfg = Config.load(str(p))
         assert cfg.dry_run is True
 
@@ -40,21 +40,25 @@ class TestConfigOverrides:
 
     def test_directories(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
-        p.write_text('input_dir = "/custom/input"\noutput_dir = "/custom/output"\n')
+        p.write_text(
+            '[takeout2paperless]\ninput_dir = "/custom/input"\noutput_dir = "/custom/output"\n'
+        )
         cfg = Config.load(str(p))
         assert cfg.input_dir == Path("/custom/input").resolve()
         assert cfg.output_dir == Path("/custom/output").resolve()
 
-    def test_disabled_directory_rule(self, tmp_path: Path) -> None:
+    def test_directory_blocklist(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
-        p.write_text('[exclude.directories]\n"google photos" = false\ntrash = true\n')
+        p.write_text('[exclude]\ndirectories = ["trash"]\n')
         cfg = Config.load(str(p))
-        assert "google photos" not in cfg.exclude_directories
         assert "trash" in cfg.exclude_directories
+        assert "google photos" not in cfg.exclude_directories
 
     def test_filename_patterns(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
-        p.write_text('[exclude.filename_patterns]\nexam = "^\\\\d{4}_.*\\\\.pdf$"\n')
+        p.write_text(
+            '[exclude]\nfilename_patterns = [{ name = "exam", pattern = "^\\\\d{4}_.*\\\\.pdf$" }]\n'
+        )
         cfg = Config.load(str(p))
         assert len(cfg.exclude_filename_patterns) == 1
         pat = cfg.exclude_filename_patterns[0]
@@ -63,7 +67,9 @@ class TestConfigOverrides:
 
     def test_directory_patterns(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
-        p.write_text('[exclude.directory_patterns]\ndotlocal = "\\\\.local/"\n')
+        p.write_text(
+            '[exclude]\ndirectory_patterns = [{ name = "dotlocal", pattern = "\\\\.local/" }]\n'
+        )
         cfg = Config.load(str(p))
         assert len(cfg.exclude_directory_patterns) == 1
         pat = cfg.exclude_directory_patterns[0]
@@ -72,13 +78,13 @@ class TestConfigOverrides:
 
     def test_invalid_regex_skipped(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
-        p.write_text('[exclude.filename_patterns]\nbad = "[invalid"\n')
+        p.write_text('[exclude]\nfilename_patterns = [{ name = "bad", pattern = "[invalid" }]\n')
         cfg = Config.load(str(p))
         assert len(cfg.exclude_filename_patterns) == 0
         assert len(cfg.exclude_directory_patterns) == 0
 
     def test_custom_target_extensions(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
-        p.write_text('target_extensions = [".pdf"]\n')
+        p.write_text('[filter]\ninclude_extensions = [".pdf"]\n')
         cfg = Config.load(str(p))
         assert cfg.target_extensions == frozenset({".pdf"})

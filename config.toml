@@ -1,36 +1,39 @@
 # takeout2paperless configuration
 # See config/example.toml for a fully annotated version.
 
+[takeout2paperless]
 input_dir = "/home/fai/Downloads/takeout/"
 output_dir = "paperless_ready"
-
-target_extensions = [
-    ".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt",
-]
-
 dry_run = false
 fingerprint = true
 
-[exclude.directories]
-"google photos" = true
-"trash" = true
-"cache" = true
-"config" = true
-"local" = true
-"code" = true
-"cloud_credentials" = true
-"tuttee" = true
-"tor-browser" = true
-"downloads" = true
+[filter]
+# Extensions to extract
+include_extensions = [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"]
 
-[exclude.directory_patterns]
-# Match .local/ and .config/ as path components (more precise than substring)
-"dot-local-config" = "(?:^|/)\\.(?:local|config)(?:/|$)"
-# Match Google Takeout telemetry export files
-"telemetry" = "open-telemetry"
+[exclude]
+# Directory names to skip (case-insensitive substring match)
+directories = [
+    "google photos",
+    "trash",
+    "cache",
+    "config",
+    "local",
+    "code",
+    "cloud_credentials",
+    "tuttee",
+    "tor-browser",
+    "downloads",
+]
 
-[exclude.filename_patterns]
-# Cambridge / CIE-style exam PDFs plus specimen/frequently-asked variants
-"exam-papers" = "^\\d{4}_[a-z]{1,3}\\d{0,2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf|fq|sw|ab)(?:_\\d{1,3})?(?:\\s*\\(\\d+\\))?\\.pdf$"
-# Google Takeout telemetry CSV exports
-"telemetry-csv" = "^open-telemetry.*\\.csv$"
+# Regex patterns matched against the full archive path
+directory_patterns = [
+    { name = "dot-local-config", pattern = "(?:^|/)\\.(?:local|config)(?:/|$)" },
+    { name = "telemetry",        pattern = "open-telemetry" },
+]
+
+# Regex patterns matched against the filename only
+filename_patterns = [
+    { name = "exam-papers",  pattern = "^\\d{4}_[a-z]{1,3}\\d{0,2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf|fq|sw|ab)(?:_\\d{1,3})?(?:\\s*\\(\\d+\\))?\\.pdf$" },
+    { name = "telemetry-csv", pattern = "^open-telemetry.*\\.csv$" },
+]

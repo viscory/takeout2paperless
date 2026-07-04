@@ -30,7 +30,7 @@ class Config:
     # Target extensions (lowercase, with dot)
     target_extensions: frozenset[str]
 
-    # Directory blocklist (lowercase fragments that are enabled)
+    # Directory blocklist (lowercase fragments)
     exclude_directories: frozenset[str]
 
     # Directory regex patterns (compiled, case-insensitive, matched against full path)
@@ -66,79 +66,77 @@ class Config:
 
         anchor = p.parent if p.exists() else None
 
-        input_dir = _resolve_path(raw.get("input_dir", "."), anchor)
-        output_dir = _resolve_path(raw.get("output_dir", "paperless_ready"), anchor)
+        # ── [takeout2paperless] ──────────────────────────────────────
+        app = raw.get("takeout2paperless", {})
+        input_dir = _resolve_path(app.get("input_dir", "."), anchor)
+        output_dir = _resolve_path(app.get("output_dir", "paperless_ready"), anchor)
+        dry_run = bool(app.get("dry_run", False))
+        fingerprint = bool(app.get("fingerprint", False))
 
-        exts = raw.get(
-            "target_extensions",
-            [
-                ".pdf",
-                ".docx",
-                ".doc",
-                ".xlsx",
-                ".xls",
-                ".csv",
-                ".txt",
-            ],
+        # ── [filter] ─────────────────────────────────────────────────
+        filter_cfg = raw.get("filter", {})
+        exts = filter_cfg.get(
+            "include_extensions",
+            [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"],
         )
         if not isinstance(exts, list):
-            _logger.warning("target_extensions must be a list, falling back to defaults")
+            _logger.warning("filter.include_extensions must be a list, falling back to defaults")
             exts = [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"]
 
-        # Exclude directories — built-in defaults when table is empty
-        _default_exclude_dirs = {"google photos", "trash"}
-        exclude_raw = raw.get("exclude", {})
-        dirs_raw = exclude_raw.get("directories", {})
-        if not isinstance(dirs_raw, dict):
-            _logger.warning("exclude.directories must be a table, ignoring")
-            dirs_raw = {}
-        enabled_dirs = {
-            d.lower() for d, enabled in dirs_raw.items() if isinstance(enabled, bool) and enabled
-        }
-        # If the user provided an empty table (or omitted it entirely),
-        # fall back to built-in defaults.
-        exclude_dirs = frozenset(enabled_dirs) if enabled_dirs else frozenset(_default_exclude_dirs)
+        # ── [exclude] ────────────────────────────────────────────────
+        exclude_cfg = raw.get("exclude", {})
 
-        # Directory regex patterns (matched against full archive path)
-        dir_pats_raw = exclude_raw.get("directory_patterns", {})
-        if not isinstance(dir_pats_raw, dict):
-            _logger.warning("exclude.directory_patterns must be a table, ignoring")
-            dir_pats_raw = {}
-        dir_patterns: list[Pattern[str]] = []
-        for name, raw_pat in dir_pats_raw.items():
+        # Directories — built-in defaults when absent/empty
+        _default_exclude_dirs = {"google photos", "trash"}
+        dirs_raw = exclude_cfg.get("directories", [])
+        if isinstance(dirs_raw, list):
+            enabled_dirs = {d.lower() for d in dirs_raw if isinstance(d, str)}
+            exclude_dirs = (
+                frozenset(enabled_dirs) if enabled_dirs else frozenset(_default_exclude_dirs)
+            )
+        else:
+            _logger.warning("exclude.directories must be a list, using defaults")
+            exclude_dirs = frozenset(_default_exclude_dirs)
+
+        # Directory patterns
+        dir_pats: list[Pattern[str]] = []
+        for entry in exclude_cfg.get("directory_patterns", []):
+            if not isinstance(entry, dict):
+                _logger.warning("directory pattern entry must be a table, skipping")
+                continue
+            name = entry.get("name", "unnamed")
+            raw_pat = entry.get("pattern", "")
             if not isinstance(raw_pat, str):
                 _logger.warning("Directory pattern '%s' is not a string, skipping", name)
                 continue
             try:
-                dir_patterns.append(re.compile(raw_pat, re.IGNORECASE))
+                dir_pats.append(re.compile(raw_pat, re.IGNORECASE))
             except re.error as exc:
                 _logger.warning("Invalid regex for '%s': %s — skipping", name, exc)
 
         # Filename patterns
-        pats_raw = exclude_raw.get("filename_patterns", {})
-        if not isinstance(pats_raw, dict):
-            _logger.warning("exclude.filename_patterns must be a table, ignoring")
-            pats_raw = {}
-        patterns: list[Pattern[str]] = []
-        for name, raw_pat in pats_raw.items():
+        filename_pats: list[Pattern[str]] = []
+        for entry in exclude_cfg.get("filename_patterns", []):
+            if not isinstance(entry, dict):
+                _logger.warning("filename pattern entry must be a table, skipping")
+                continue
+            name = entry.get("name", "unnamed")
+            raw_pat = entry.get("pattern", "")
             if not isinstance(raw_pat, str):
-                _logger.warning("Pattern '%s' is not a string, skipping", name)
+                _logger.warning("Filename pattern '%s' is not a string, skipping", name)
                 continue
             try:
-                patterns.append(re.compile(raw_pat, re.IGNORECASE))
+                filename_pats.append(re.compile(raw_pat, re.IGNORECASE))
             except re.error as exc:
                 _logger.warning("Invalid regex for '%s': %s — skipping", name, exc)
-
-        dry_run = bool(raw.get("dry_run", False))
-        fingerprint = bool(raw.get("fingerprint", False))
 
         return cls(
             input_dir=input_dir,
             output_dir=output_dir,
             target_extensions=frozenset(e.lower() for e in exts),
             exclude_directories=exclude_dirs,
-            exclude_directory_patterns=tuple(dir_patterns),
-            exclude_filename_patterns=tuple(patterns),
+            exclude_directory_patterns=tuple(dir_pats),
+            exclude_filename_patterns=tuple(filename_pats),
             dry_run=dry_run,
             fingerprint=fingerprint,
         )

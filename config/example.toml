@@ -5,7 +5,7 @@
 # and customise it.  All settings live here; there are no CLI flags.
 # ────────────────────────────────────────────────────────────────────
 
-# ── Directories ────────────────────────────────────────────────────
+[takeout2paperless]
 
 # Directory containing your Google Takeout archive files.
 # The tool scans this folder for .zip, .tar.*, and .7z files.
@@ -13,24 +13,6 @@ input_dir = "."
 
 # Where extracted documents will be written (created if missing).
 output_dir = "paperless_ready"
-
-
-# ── Target file types ──────────────────────────────────────────────
-
-# Only files with these extensions are extracted.
-# Everything else is silently skipped.
-target_extensions = [
-    ".pdf",
-    ".docx",
-    ".doc",
-    ".xlsx",
-    ".xls",
-    ".csv",
-    ".txt",
-]
-
-
-# ── Advanced ───────────────────────────────────────────────────────
 
 # When true, no files are written.  Useful for testing your rules.
 dry_run = false
@@ -45,43 +27,44 @@ dry_run = false
 fingerprint = false
 
 
-# ── Exclusion rules ────────────────────────────────────────────────
+[filter]
+
+# Only files with these extensions are extracted.
+# Everything else is silently skipped.
+include_extensions = [
+    ".pdf",
+    ".docx",
+    ".doc",
+    ".xlsx",
+    ".xls",
+    ".csv",
+    ".txt",
+]
+
 
 [exclude]
 
-  # ── Directory blocklist ──────────────────────────────────────────
-  # Set any path fragment to true to skip _every_ file whose
-  # archive path contains that string (case-insensitive).
-  # Set to false to allow files in that path through.
-  [exclude.directories]
-  "google photos" = true     # Skip Google Photos folders
-  trash = true               # Skip Trash folders
+# Directory blocklist — any archive path containing one of these
+# strings (case-insensitive) is skipped entirely.
+directories = [
+    "google photos",
+    "trash",
+]
 
-  # ── Directory regex patterns ─────────────────────────────────────
-  # Each entry is a named rule whose value is a regex.
-  # Any file whose *full archive path* matches one of these patterns
-  # (case-insensitive) is skipped.
-  #
-  # Use this for precise path-based exclusions — e.g. dotted dirs like
-  # .local/ or .config/, telemetry folders, etc.
-  #
-  # 🔹  Remove, replace, or add your own patterns as needed.
-  [exclude.directory_patterns]
-  # "dot-local-config" = "(?:^|/)\\.(?:local|config)(?:/|$)"
-  # "telemetry" = "open-telemetry"
+# Directory regex patterns — matched against the full archive path.
+# Each entry is a named table with ``name`` and ``pattern`` keys.
+directory_patterns = [
+    # { name = "dot-local-config", pattern = "(?:^|/)\\.(?:local|config)(?:/|$)" },
+]
 
-  # ── Filename regex patterns ──────────────────────────────────────
-  # Each entry is a named rule whose value is a regex.
-  # Any file whose *filename* matches one of these patterns
-  # (case-insensitive) is skipped.
-  #
-  # Use this to block files by naming convention — e.g. exam papers,
-  # system files, thumbnails, etc.
-  #
-  # The example below blocks Cambridge / CIE-style exam PDFs:
-  #   {subject}_{session}_{component}_{paper}.pdf
-  # e.g. 1123_w15_ms_21.pdf, 9702_s18_qp_12.pdf
-  #
-  # 🔹  Remove, replace, or add your own patterns as needed.
-  [exclude.filename_patterns]
-  # "exam-papers" = "^\\d{4}_[a-z]{1,3}\\d{0,2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf|fq|sw|ab)(?:_\\d{1,3})?(?:\\s*\\(\\d+\\))?\\.pdf$"
+# Filename regex patterns — matched against the filename only.
+# Each entry is a named table with ``name`` and ``pattern`` keys.
+#
+# The example below blocks Cambridge / CIE-style exam PDFs:
+#   {subject}_{session}_{component}_{paper}.pdf
+# e.g. 1123_w15_ms_21.pdf, 9702_s18_qp_12.pdf
+#
+# 🔹  Remove, replace, or add your own patterns as needed.
+filename_patterns = [
+    # { name = "exam-papers", pattern = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf)(?:_\\d{1,3})?\\.pdf$" },
+]
