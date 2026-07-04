@@ -17,14 +17,14 @@ directories.  This tool:
 
 ## Supported archive formats
 
-| Format       | Extension(s)                     | Backend            |
-|--------------|----------------------------------|--------------------|
-| ZIP          | `.zip`                           | `zipfile` (stdlib) |
-| TAR (gzip)   | `.tar.gz`, `.tgz`                | `tarfile` (stdlib) |
-| TAR (bzip2)  | `.tar.bz2`                       | `tarfile` (stdlib) |
-| TAR (xz)     | `.tar.xz`                        | `tarfile` (stdlib) |
-| TAR (uncomp) | `.tar`                           | `tarfile` (stdlib) |
-| 7-Zip        | `.7z`                            | `py7zr`            |
+| Format       | Extension(s)                     | Backend            | Notes |
+|--------------|----------------------------------|--------------------|-------|
+| ZIP          | `.zip`                           | `zipfile` (stdlib) | True streaming |
+| TAR (gzip)   | `.tar.gz`, `.tgz`                | `tarfile` (stdlib) | True streaming |
+| TAR (bzip2)  | `.tar.bz2`                       | `tarfile` (stdlib) | True streaming |
+| TAR (xz)     | `.tar.xz`                        | `tarfile` (stdlib) | True streaming |
+| TAR (uncomp) | `.tar`                           | `tarfile` (stdlib) | True streaming |
+| 7-Zip        | `.7z`                            | `py7zr`            | Extracts to scratch disk first (~1× archive size) |
 
 ## Quick start
 
@@ -38,6 +38,8 @@ cp config/example.toml config.toml
 
 # Run it
 uv run python -m takeout2paperless
+# or, from anywhere:
+takeout2paperless --config /path/to/config.toml
 ```
 
 Requires Python 3.14+ and [uv](https://docs.astral.sh/uv/).
@@ -45,26 +47,27 @@ Requires Python 3.14+ and [uv](https://docs.astral.sh/uv/).
 ## Configuration
 
 Everything is driven by `config.toml` at the project root.  There are
-**no command-line arguments**.
+**no required command-line arguments** (`--config` is optional).
 
 A fully annotated example lives at [`config/example.toml`](config/example.toml) —
 copy it and customise:
 
 ```toml
+[takeout2paperless]
 input_dir = "."
 output_dir = "paperless_ready"
-
-target_extensions = [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"]
-
-[exclude.directories]
-"google photos" = true
-trash = true
-
-[exclude.filename_patterns]
-# "exam-papers" = "^\\d{4}_[a-z]\\d{2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf)(?:_\\d{1,3})?\\.pdf$"
-
 dry_run = false
 fingerprint = false
+
+[filter]
+include_extensions = [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"]
+
+[exclude]
+ban = [
+    # (?i) makes the pattern case-insensitive
+    "(?i)(?:^|/)google photos(?:/|$)",
+    "(?i)(?:^|/)trash(?:/|$)",
+]
 ```
 
 ### All config keys
@@ -73,16 +76,24 @@ fingerprint = false
 |-----|------|---------|-------------|
 | `input_dir` | string | `"."` | Directory containing your archive files |
 | `output_dir` | string | `"paperless_ready"` | Where to place extracted documents |
-| `target_extensions` | list of strings | `.pdf`, `.docx`, … | File extensions to extract (case-insensitive) |
-| `[exclude.directories]` | table | — | Map of path fragments to boolean. `true` = skip files whose path contains this fragment. Omit or set to `false` to allow. |
-| `[exclude.filename_patterns]` | table | — | Map of named regex patterns. Files whose **filename** matches any pattern are skipped (case-insensitive). |
-| `dry_run` | boolean | `false` | When `true`, no files are written. Useful for testing your rules. |
-| `fingerprint` | boolean | `false` | When `true`, the original directory path is encoded into the filename (e.g. `Takeout_Drive_Documents_report.pdf`) |
+| `fingerprint` | boolean | `false` | Encode original directory path into filename |
+| `fingerprint_delimiter` | string | `"_"` | Character joining path components when fingerprinting |
+| `dry_run` | boolean | `false` | When `true`, no files are written |
+| `filter.include_extensions` | list | `.pdf`, `.docx`, … | File extensions to extract (always case-insensitive) |
+| `exclude.ban` | list of strings | `(?i)google photos`, `(?i)trash` | Regex patterns. Checked against filename **and** full archive path. |
+
+### Regex notes
+
+- **No global case-insensitive flag** — if you want case-insensitive matching, add `(?i)` at the start of your pattern.
+- **Directory patterns** should use `(?:^|/)name(?:/|$)` so they match only as path components, not substrings inside filenames.
+- **Filename patterns** should use `^` anchors to avoid matching inside a full path.
 
 ### Example: fingerprint to distinguish sources
 
 ```toml
+[takeout2paperless]
 fingerprint = true
+fingerprint_delimiter = "_"
 ```
 
 ```
@@ -90,21 +101,19 @@ Takeout/Drive/Documents/report.pdf  →  Takeout_Drive_Documents_report.pdf
 Takeout/Drive/Invoices/report.pdf   →  Takeout_Drive_Invoices_report.pdf
 ```
 
-### Example: only block Trash, allow Google Photos
-
-```toml
-[exclude.directories]
-"google photos" = false
-trash = true
-```
-
 ### Example: block files by custom naming convention
 
 ```toml
-[exclude.filename_patterns]
-"thumbnails" = "^thumb_.*\\.jpg$"
-"system-files" = "\\.DS_Store$"
+[exclude]
+ban = [
+    "(?i)^\\d{4}_[a-z]\\d{2}_(?:qp|ms)\\.pdf$",
+    "(?i)^thumb_.*\\.jpg$",
+]
 ```
+
+## Edge cases
+
+- **Dotfiles and extensionless files** — `Path("report").suffix` is `""`, so a file literally named `.pdf` (or one with no extension) never matches `filter.include_extensions` and is silently skipped. This is by design; use a regex in `exclude.ban` if you need to handle such files explicitly.
 
 ## Development
 
@@ -125,7 +134,7 @@ uv run ruff check src/ tests/
 
 ```
 takeout2paperless/
-├── config.toml                 # Your config (loaded at runtime)
+├── config.toml                 # Your local config (gitignored)
 ├── config/
 │   └── example.toml            # Annotated example with every option explained
 ├── src/takeout2paperless/

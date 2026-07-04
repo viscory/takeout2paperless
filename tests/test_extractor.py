@@ -19,6 +19,7 @@ class TestExtractorDryRun:
             ban=(),
             dry_run=True,
             fingerprint=False,
+            fingerprint_delimiter="_",
         )
         report = TakeoutExtractor(cfg).run()
         assert report.processed > 0
@@ -33,6 +34,7 @@ class TestExtractorDryRun:
             ban=(),
             dry_run=True,
             fingerprint=False,
+            fingerprint_delimiter="_",
         )
         report = TakeoutExtractor(cfg).run()
         assert report.skipped > 0
@@ -47,9 +49,10 @@ class TestExtractorFiltering:
             input_dir=fixtures_dir,
             output_dir=tmp_path / "out",
             target_extensions=frozenset({".pdf", ".xlsx", ".csv", ".jpg"}),
-            ban=(__import__("re").compile("google photos", __import__("re").IGNORECASE),),
+            ban=(__import__("re").compile(r"(?i)(?:^|/)google photos(?:/|$)"),),
             dry_run=True,
             fingerprint=False,
+            fingerprint_delimiter="_",
         )
         report = TakeoutExtractor(cfg).run()
         assert report.skip_reasons.get("Banned pattern", 0) > 0
@@ -62,6 +65,7 @@ class TestExtractorFiltering:
             ban=(),
             dry_run=True,
             fingerprint=False,
+            fingerprint_delimiter="_",
         )
         report = TakeoutExtractor(cfg).run()
         assert report.skip_reasons.get("Banned pattern", 0) == 0
@@ -77,11 +81,12 @@ class TestExtractorIntegration:
             output_dir=tmp_path / "out",
             target_extensions=frozenset({".pdf", ".xlsx", ".csv"}),
             ban=(
-                __import__("re").compile("google photos", __import__("re").IGNORECASE),
-                __import__("re").compile("trash", __import__("re").IGNORECASE),
+                __import__("re").compile(r"(?i)(?:^|/)google photos(?:/|$)"),
+                __import__("re").compile(r"(?i)(?:^|/)trash(?:/|$)"),
             ),
             dry_run=True,
             fingerprint=False,
+            fingerprint_delimiter="_",
         )
         report = TakeoutExtractor(cfg).run()
 
@@ -98,3 +103,55 @@ class TestExtractorIntegration:
         #            draft.xlsx(trash)
         assert report.processed == 6
         assert report.skipped == 3
+
+
+class TestExtractorFingerprint:
+    """Fingerprint behaviour."""
+
+    def test_fingerprint_encoding(self, tmp_path: Path, fixtures_dir: Path) -> None:
+        """Paths are encoded into the output filename."""
+        cfg = Config(
+            input_dir=fixtures_dir,
+            output_dir=tmp_path / "out",
+            target_extensions=frozenset({".pdf", ".xlsx", ".csv", ".jpg"}),
+            ban=(),
+            dry_run=True,
+            fingerprint=True,
+            fingerprint_delimiter="_",
+        )
+        report = TakeoutExtractor(cfg).run()
+
+        # report.pdf comes from Takeout/Drive/report.pdf
+        assert any("Takeout_Drive_report.pdf" in name for name in report.processed_files)
+
+    def test_fingerprint_delimiter(self, tmp_path: Path, fixtures_dir: Path) -> None:
+        """Custom delimiter is used in the encoded filename."""
+        cfg = Config(
+            input_dir=fixtures_dir,
+            output_dir=tmp_path / "out",
+            target_extensions=frozenset({".pdf", ".xlsx", ".csv", ".jpg"}),
+            ban=(),
+            dry_run=True,
+            fingerprint=True,
+            fingerprint_delimiter="-",
+        )
+        report = TakeoutExtractor(cfg).run()
+
+        assert any("Takeout-Drive-report.pdf" in name for name in report.processed_files)
+
+    def test_collision_avoidance_with_fingerprint(self, tmp_path: Path, fixtures_dir: Path) -> None:
+        """Same basename from different dirs gets unique names."""
+        cfg = Config(
+            input_dir=fixtures_dir,
+            output_dir=tmp_path / "out",
+            target_extensions=frozenset({".pdf"}),
+            ban=(),
+            dry_run=False,
+            fingerprint=True,
+            fingerprint_delimiter="_",
+        )
+        report = TakeoutExtractor(cfg).run()
+        # There are multiple .pdf files but they come from different dirs,
+        # so fingerprinting should give each a unique name.
+        pdf_files = [n for n in report.processed_files if n.endswith(".pdf")]
+        assert len(pdf_files) == len(set(pdf_files))

@@ -17,8 +17,10 @@ class TestConfigDefaults:
         assert cfg.dry_run is False
         assert ".pdf" in cfg.target_extensions
         assert len(cfg.ban) == 2  # built-in defaults
-        assert any(p.search("google photos") for p in cfg.ban)
-        assert any(p.search("trash") for p in cfg.ban)
+        assert cfg.fingerprint_delimiter == "_"
+        # Default patterns include (?i) for case-insensitive matching
+        assert any(p.search("Takeout/Google Photos/image.jpg") for p in cfg.ban)
+        assert any(p.search("Takeout/Trash/old.pdf") for p in cfg.ban)
 
     def test_load_empty_file(self, tmp_path: Path) -> None:
         p = tmp_path / "empty.toml"
@@ -26,6 +28,7 @@ class TestConfigDefaults:
         cfg = Config.load(str(p))
         assert cfg.dry_run is False
         assert len(cfg.ban) == 2  # built-in defaults
+        assert cfg.fingerprint_delimiter == "_"
 
     def test_dry_run_flag(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
@@ -62,12 +65,23 @@ class TestConfigOverrides:
 
     def test_ban_regex(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
+        # Write pattern that TOML parses to ^\d{4}_.*\.pdf$
         p.write_text('[exclude]\nban = ["^\\\\d{4}_.*\\\\.pdf$"]\n')
         cfg = Config.load(str(p))
         assert len(cfg.ban) == 1
         pat = cfg.ban[0]
         assert pat.match("1123_w15_ms_21.pdf")
         assert not pat.match("normal.pdf")
+
+    def test_case_sensitive_ban(self, tmp_path: Path) -> None:
+        """Without (?i), patterns are case-sensitive."""
+        p = tmp_path / "cfg.toml"
+        p.write_text('[exclude]\nban = ["google photos"]\n')
+        cfg = Config.load(str(p))
+        assert len(cfg.ban) == 1
+        pat = cfg.ban[0]
+        assert pat.search("Takeout/google photos/file.jpg")
+        assert not pat.search("Takeout/Google Photos/file.jpg")
 
     def test_invalid_regex_skipped(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
@@ -80,3 +94,21 @@ class TestConfigOverrides:
         p.write_text('[filter]\ninclude_extensions = [".pdf"]\n')
         cfg = Config.load(str(p))
         assert cfg.target_extensions == frozenset({".pdf"})
+
+    def test_fingerprint_delimiter(self, tmp_path: Path) -> None:
+        p = tmp_path / "cfg.toml"
+        p.write_text('[takeout2paperless]\nfingerprint_delimiter = "-"\n')
+        cfg = Config.load(str(p))
+        assert cfg.fingerprint_delimiter == "-"
+
+    def test_invalid_fingerprint_delimiter(self, tmp_path: Path) -> None:
+        p = tmp_path / "cfg.toml"
+        p.write_text('[takeout2paperless]\nfingerprint_delimiter = "/"\n')
+        cfg = Config.load(str(p))
+        assert cfg.fingerprint_delimiter == "_"  # falls back to safe default
+
+    def test_fingerprint_delimiter_not_single_char(self, tmp_path: Path) -> None:
+        p = tmp_path / "cfg.toml"
+        p.write_text('[takeout2paperless]\nfingerprint_delimiter = "abc"\n')
+        cfg = Config.load(str(p))
+        assert cfg.fingerprint_delimiter == "_"

@@ -6,6 +6,7 @@ import logging
 import shutil
 import tarfile
 import tempfile
+import uuid
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -136,29 +137,38 @@ def _iter_zip(path: Path) -> Iterator[ArchiveEntry]:
 
 
 def _iter_tar(path: Path) -> Iterator[ArchiveEntry]:
-    """Yield entries from a tar archive — streams via ``shutil.copyfileobj``."""
+    """Yield entries from a tar archive — streams via temp files."""
     with tarfile.open(path, "r") as tf:
-        for member in tf.getmembers():
-            if not member.isfile():
-                continue
-            src = tf.extractfile(member)
-            if src is None:
-                continue
-            # Read the content eagerly because ``tf`` may move on;
-            # but we buffer incrementally and return a chunked reader.
-            data = src.read()
-            name = member.name
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            for member in tf.getmembers():
+                if not member.isfile():
+                    continue
+                src = tf.extractfile(member)
+                if src is None:
+                    continue
 
-            def _write(dest: Path, _data: bytes = data) -> None:
-                with open(dest, "wb") as dst:
-                    dst.write(_data)
+                # Stream member to a temp file immediately so we don't
+                # hold the entire file in RAM.
+                tmp_file = tmp_path / str(uuid.uuid4())
+                with open(tmp_file, "wb") as dst:
+                    shutil.copyfileobj(src, dst, _CHUNK_SIZE)
 
-            yield ArchiveEntry(path=name, write_to=_write)
+                name = member.name
+
+                def _write(dest: Path, _src: Path = tmp_file) -> None:
+                    shutil.copyfile(str(_src), str(dest))
+
+                yield ArchiveEntry(path=name, write_to=_write)
 
 
 def _iter_7z(path: Path) -> Iterator[ArchiveEntry]:
-    """Yield entries from a 7z archive — extracts to tempdir first, then streams
-    from the temp files in chunks."""
+    """Yield entries from a 7z archive — extracts to tempdir first, then copies.
+
+    .. note::
+        7z requires scratch disk roughly equal to the archive's uncompressed
+        size because the format does not support random member access.
+    """
     with py7zr.SevenZipFile(path, mode="r") as sz:
         names = sz.namelist()
         real_files = [n for n in names if not n.endswith("/")]
@@ -176,6 +186,6 @@ def _iter_7z(path: Path) -> Iterator[ArchiveEntry]:
                     continue
 
                 def _write(dest: Path, _src: Path = file_on_disk) -> None:
-                    shutil.copy2(_src, dest)
+                    shutil.copyfile(str(_src), str(dest))
 
                 yield ArchiveEntry(path=name, write_to=_write)

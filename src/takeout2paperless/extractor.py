@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any
 from takeout2paperless.archive import (
     SUPPORTED_FORMATS,
     ArchiveEntry,
-    count_entries,
     detect_format,
     iter_archive,
 )
@@ -82,29 +81,17 @@ class TakeoutExtractor:
                     overall_task,
                     description=f"Processing [cyan]{arc.name}[/cyan]",
                 )
-                self._process_archive(arc, console, overall, overall_task)
+                self._process_archive(arc, console)
+                overall.advance(overall_task)
 
         self._report.render(console)
         return self._report
 
     # ── Internals ──────────────────────────────────────────────────
 
-    def _process_archive(
-        self, path: Path, console: Any, overall: Any | None = None, overall_task: Any | None = None
-    ) -> None:
+    def _process_archive(self, path: Path, console: Any) -> None:
         """Process a single archive, updating *self._report*."""
         archive_name = path.name
-
-        # Count entries first (metadata only, no content) for the progress bar
-        try:
-            total = count_entries(path)
-        except Exception:
-            _logger.exception("Failed to read archive '%s'", archive_name)
-            self._report.errors += 1
-            return
-
-        if total == 0:
-            return
 
         from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn
 
@@ -120,7 +107,7 @@ class TakeoutExtractor:
         with file_progress:
             file_task = file_progress.add_task(
                 f"Files in [cyan]{archive_name}[/cyan]",
-                total=total,
+                total=None,
             )
 
             # Lazily iterate — never materialise all entries in RAM.
@@ -157,12 +144,6 @@ class TakeoutExtractor:
                     self._report.errors += 1
 
                 file_progress.advance(file_task)
-                if overall is not None and overall_task is not None:
-                    overall.advance(overall_task, 1 / total if total else 0)
-
-        if overall is not None and overall_task is not None:
-            # Ensure we advance any remaining fractional progress
-            overall.advance(overall_task, 0)
 
         self._report.archive_stats.append({"archive": archive_name, "files": local_ok})
 
@@ -195,15 +176,14 @@ class TakeoutExtractor:
         """
         p = Path(original_name)
         basename = p.name
+        delim = self._config.fingerprint_delimiter
 
         if self._config.fingerprint:
             parent = p.parent
             if parent and parent != Path("."):
-                safe = "".join(
-                    c if c in string.ascii_letters + string.digits + "-_" else "_"
-                    for c in parent.as_posix()
-                )
-                basename = f"{safe}_{basename}"
+                safe_chars = string.ascii_letters + string.digits + "-_"
+                safe = "".join(c if c in safe_chars else delim for c in parent.as_posix())
+                basename = f"{safe}{delim}{basename}"
 
         stem, ext = Path(basename).stem, Path(basename).suffix
         count = self._name_counter[basename]

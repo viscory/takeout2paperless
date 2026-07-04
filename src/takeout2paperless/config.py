@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import re
+import string
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Pattern
 
-_logger = __import__("logging").getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 def _resolve_path(raw: str, anchor: Path | None = None) -> Path:
@@ -30,7 +32,7 @@ class Config:
     # Target extensions (lowercase, with dot)
     target_extensions: frozenset[str]
 
-    # Unified ban list — every pattern is compiled as a case-insensitive regex
+    # Unified ban list — every pattern is compiled as a regex
     # and checked against both the filename and the full archive path.
     ban: tuple[Pattern[str], ...]
 
@@ -39,6 +41,10 @@ class Config:
 
     # Whether to encode the original directory path into the filename
     fingerprint: bool
+
+    # Character used to join path components when fingerprinting.
+    # Must be a single ASCII letter, digit, hyphen, underscore, or period.
+    fingerprint_delimiter: str
 
     # ── Factory ─────────────────────────────────────────────────────
 
@@ -53,7 +59,8 @@ class Config:
         p = Path(path)
         if p.is_file():
             try:
-                raw = tomllib.loads(p.read_text())
+                with p.open("rb") as f:
+                    raw = tomllib.load(f)
             except (tomllib.TOMLDecodeError, OSError) as exc:
                 _logger.warning("Invalid config '%s': %s — using defaults", p, exc)
         else:
@@ -68,6 +75,18 @@ class Config:
         dry_run = bool(app.get("dry_run", False))
         fingerprint = bool(app.get("fingerprint", False))
 
+        # Fingerprint delimiter validation
+        _delimiter = app.get("fingerprint_delimiter", "_")
+        if not isinstance(_delimiter, str) or len(_delimiter) != 1:
+            _logger.warning("fingerprint_delimiter must be a single character, using '_'")
+            _delimiter = "_"
+        elif _delimiter not in string.ascii_letters + string.digits + "-_.":
+            _logger.warning(
+                "fingerprint_delimiter '%s' is not safe (use a-z, A-Z, 0-9, -, _, .), using '_'",
+                _delimiter,
+            )
+            _delimiter = "_"
+
         # ── [filter] ─────────────────────────────────────────────────
         filter_cfg = raw.get("filter", {})
         exts = filter_cfg.get(
@@ -81,11 +100,13 @@ class Config:
         # ── [exclude] ────────────────────────────────────────────────
         exclude_cfg = raw.get("exclude", {})
 
-        # Default ban patterns when the user provides none
-        _default_ban = {
-            "google photos",
-            "trash",
-        }
+        # Default ban patterns — use (?i) for case-insensitive defaults
+        # so they work out of the box. User-supplied patterns must include
+        # (?i) themselves if they want case-insensitive matching.
+        _default_ban = [
+            r"(?i)(?:^|/)google photos(?:/|$)",
+            r"(?i)(?:^|/)trash(?:/|$)",
+        ]
         ban_raw = exclude_cfg.get("ban", [])
         if isinstance(ban_raw, list):
             entries = [e for e in ban_raw if isinstance(e, str)]
@@ -100,7 +121,7 @@ class Config:
         compiled: list[Pattern[str]] = []
         for raw_pat in entries:
             try:
-                compiled.append(re.compile(raw_pat, re.IGNORECASE))
+                compiled.append(re.compile(raw_pat))
             except re.error as exc:
                 _logger.warning("Invalid ban regex '%s': %s — skipping", raw_pat, exc)
 
@@ -111,4 +132,5 @@ class Config:
             ban=tuple(compiled),
             dry_run=dry_run,
             fingerprint=fingerprint,
+            fingerprint_delimiter=_delimiter,
         )

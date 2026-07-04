@@ -77,3 +77,49 @@
 - `CHANGELOG.md`
 
 **Why:** The user wants a simple unix-style tool: do one thing (extract), do it well, exit. No interactive prompts. Regex patterns for directories prevent false positives where a directory name happens to appear inside a filename or another directory name.
+
+---
+
+## 2026-07-04 — Entry 004
+
+**Trigger:** User asked to remove `re.IGNORECASE` (user controls casing via `(?i)`), add customizable `fingerprint_delimiter`, and address all 8 open GitHub issues.
+
+**What happened:**
+- Removed global `re.IGNORECASE` from regex compilation. Default patterns now include `(?i)` inline; user patterns must add `(?i)` themselves for case-insensitive matching.
+- Added `fingerprint_delimiter` config key with validation (must be a single safe character: a-z, A-Z, 0-9, `-`, `_`, `.`).
+- Removed `config.toml` from git tracking (added to `.gitignore`, `git rm --cached`).
+- Fixed tar streaming (#2): replaced `src.read()` with temp-file + `shutil.copyfileobj` to avoid loading entire tar members into RAM.
+- Fixed 7z metadata copy (#7): changed `shutil.copy2` to `shutil.copyfile` in `_iter_7z`.
+- Fixed progress bar math (#5): outer bar now advances by exactly 1 per completed archive instead of fractional per-file increments.
+- Fixed double archive open (#4): removed `count_entries` pre-count; file-level progress bar is now indeterminate (`total=None`).
+- Added `--config` CLI flag (#6) so the installed console script works from any directory.
+- Fixed `__import__("logging")` hack and `tomllib.loads(p.read_text())` (#7): now uses normal `import logging` and `tomllib.load(f)` with bytes.
+- Added fingerprint tests (#8): `test_fingerprint_encoding`, `test_fingerprint_delimiter`, `test_collision_avoidance_with_fingerprint`.
+- Documented dotfile/extensionless skip and 7z scratch-disk requirement in README.
+
+**Files changed:**
+- `src/takeout2paperless/config.py`
+- `src/takeout2paperless/extractor.py`
+- `src/takeout2paperless/archive.py`
+- `src/takeout2paperless/cli.py`
+- `tests/test_config.py`
+- `tests/test_extractor.py`
+- `.gitignore`
+- `README.md`
+- `CHANGELOG.md`
+
+**Why:** The user wants full control over regex casing. The delimiter customization makes fingerprint output style configurable. Addressing all 8 GitHub issues cleans up technical debt (streaming, progress math, config leakage, CLI portability) before the tool is used on real multi-GB Takeout archives.
+
+---
+
+## 2026-07-04 — Entry 005
+
+**Trigger:** User asked to close the addressed GitHub issues now that fixes are in master.
+
+**What happened:**
+- Closed issues #1 through #8 with reference to commit `c9e7001` and the current commit.
+
+**Files changed:**
+- GitHub issues (via `gh issue close`)
+
+**Why:** Issues that have been fixed in code should be closed so the tracker reflects reality and future contributors don't waste time re-reporting fixed problems.

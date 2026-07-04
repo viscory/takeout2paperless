@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 
 from rich.console import Console
@@ -11,7 +12,11 @@ from takeout2paperless.extractor import TakeoutExtractor
 
 
 def main() -> None:
-    config = Config.load("config.toml")
+    parser = argparse.ArgumentParser(description="Extract documents from Google Takeout archives")
+    parser.add_argument("--config", default="config.toml", help="Path to config TOML file")
+    args = parser.parse_args()
+
+    config = Config.load(args.config)
 
     try:
         TakeoutExtractor(config).run()
