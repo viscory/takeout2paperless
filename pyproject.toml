@@ -18,6 +18,7 @@ dev = [
 
 [project.scripts]
 paperless-py = "paperless_py.cli:main"
+takeout-extract = "paperless_py.cli:main"
 
 [build-system]
 requires = ["hatchling"]
