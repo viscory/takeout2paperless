@@ -30,20 +30,19 @@ class Config:
     # Target extensions (lowercase, with dot)
     target_extensions: frozenset[str]
 
-    # Directory blocklist (lowercase fragments)
-    exclude_directories: frozenset[str]
-
-    # Directory regex patterns (compiled, case-insensitive, matched against full path)
-    exclude_directory_patterns: tuple[Pattern[str], ...]
-
-    # Filename regex patterns (compiled, case-insensitive)
-    exclude_filename_patterns: tuple[Pattern[str], ...]
+    # Unified ban list — every pattern is compiled as a case-insensitive regex
+    # and checked against both the filename and the full archive path.
+    ban: tuple[Pattern[str], ...]
 
     # Whether to skip actual file writes
     dry_run: bool
 
     # Whether to encode the original directory path into the filename
     fingerprint: bool
+
+    # Optional: command to run for Paperless consumption after extraction.
+    # {output_dir} is substituted with the absolute output directory path.
+    paperless_consume_cmd: str | None
 
     # ── Factory ─────────────────────────────────────────────────────
 
@@ -83,60 +82,44 @@ class Config:
             _logger.warning("filter.include_extensions must be a list, falling back to defaults")
             exts = [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"]
 
+        # ── [paperless] ──────────────────────────────────────────────
+        paperless_cfg = raw.get("paperless", {})
+        consume_cmd = paperless_cfg.get("consume_cmd")
+        if not isinstance(consume_cmd, str):
+            consume_cmd = None
+
         # ── [exclude] ────────────────────────────────────────────────
         exclude_cfg = raw.get("exclude", {})
 
-        # Directories — built-in defaults when absent/empty
-        _default_exclude_dirs = {"google photos", "trash"}
-        dirs_raw = exclude_cfg.get("directories", [])
-        if isinstance(dirs_raw, list):
-            enabled_dirs = {d.lower() for d in dirs_raw if isinstance(d, str)}
-            exclude_dirs = (
-                frozenset(enabled_dirs) if enabled_dirs else frozenset(_default_exclude_dirs)
-            )
+        # Default ban patterns when the user provides none
+        _default_ban = {
+            "google photos",
+            "trash",
+        }
+        ban_raw = exclude_cfg.get("ban", [])
+        if isinstance(ban_raw, list):
+            entries = [e for e in ban_raw if isinstance(e, str)]
+            if not entries:
+                entries = list(_default_ban)
+        elif isinstance(ban_raw, str):
+            entries = [ban_raw]
         else:
-            _logger.warning("exclude.directories must be a list, using defaults")
-            exclude_dirs = frozenset(_default_exclude_dirs)
+            _logger.warning("exclude.ban must be a string or list, using defaults")
+            entries = list(_default_ban)
 
-        # Directory patterns
-        dir_pats: list[Pattern[str]] = []
-        for entry in exclude_cfg.get("directory_patterns", []):
-            if not isinstance(entry, dict):
-                _logger.warning("directory pattern entry must be a table, skipping")
-                continue
-            name = entry.get("name", "unnamed")
-            raw_pat = entry.get("pattern", "")
-            if not isinstance(raw_pat, str):
-                _logger.warning("Directory pattern '%s' is not a string, skipping", name)
-                continue
+        compiled: list[Pattern[str]] = []
+        for raw_pat in entries:
             try:
-                dir_pats.append(re.compile(raw_pat, re.IGNORECASE))
+                compiled.append(re.compile(raw_pat, re.IGNORECASE))
             except re.error as exc:
-                _logger.warning("Invalid regex for '%s': %s — skipping", name, exc)
-
-        # Filename patterns
-        filename_pats: list[Pattern[str]] = []
-        for entry in exclude_cfg.get("filename_patterns", []):
-            if not isinstance(entry, dict):
-                _logger.warning("filename pattern entry must be a table, skipping")
-                continue
-            name = entry.get("name", "unnamed")
-            raw_pat = entry.get("pattern", "")
-            if not isinstance(raw_pat, str):
-                _logger.warning("Filename pattern '%s' is not a string, skipping", name)
-                continue
-            try:
-                filename_pats.append(re.compile(raw_pat, re.IGNORECASE))
-            except re.error as exc:
-                _logger.warning("Invalid regex for '%s': %s — skipping", name, exc)
+                _logger.warning("Invalid ban regex '%s': %s — skipping", raw_pat, exc)
 
         return cls(
             input_dir=input_dir,
             output_dir=output_dir,
             target_extensions=frozenset(e.lower() for e in exts),
-            exclude_directories=exclude_dirs,
-            exclude_directory_patterns=tuple(dir_pats),
-            exclude_filename_patterns=tuple(filename_pats),
+            ban=tuple(compiled),
             dry_run=dry_run,
             fingerprint=fingerprint,
+            paperless_consume_cmd=consume_cmd,
         )

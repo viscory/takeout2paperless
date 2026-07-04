@@ -174,25 +174,15 @@ class TakeoutExtractor:
         lower = entry.path.lower()
         name = Path(entry.path).name
 
-        # 1. Directory blocklist (substring)
-        for blocked in self._config.exclude_directories:
-            if blocked in lower:
-                return False, f"Excluded directory ({blocked})"
-
-        # 1b. Directory regex patterns (matched against full path)
-        for pat in self._config.exclude_directory_patterns:
-            if pat.search(entry.path):
-                return False, "Excluded directory pattern"
+        # 1. Unified ban list — each pattern is checked against filename AND full path
+        for pat in self._config.ban:
+            if pat.search(name) or pat.search(entry.path):
+                return False, "Banned pattern"
 
         # 2. Extension check
         ext = Path(lower).suffix
         if ext not in self._config.target_extensions:
             return False, f"Not a target extension ({ext})"
-
-        # 3. Filename regex blocklist
-        for pat in self._config.exclude_filename_patterns:
-            if pat.search(name):
-                return False, "Blocked filename pattern"
 
         return True, "Target document"
 

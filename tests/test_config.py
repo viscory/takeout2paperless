@@ -16,17 +16,16 @@ class TestConfigDefaults:
         assert cfg.output_dir == Path("paperless_ready").resolve()
         assert cfg.dry_run is False
         assert ".pdf" in cfg.target_extensions
-        assert "trash" in cfg.exclude_directories
-        assert len(cfg.exclude_directory_patterns) == 0
-        assert len(cfg.exclude_filename_patterns) == 0
+        assert len(cfg.ban) == 2  # built-in defaults
+        assert any(p.search("google photos") for p in cfg.ban)
+        assert any(p.search("trash") for p in cfg.ban)
 
     def test_load_empty_file(self, tmp_path: Path) -> None:
         p = tmp_path / "empty.toml"
         p.write_text("")
         cfg = Config.load(str(p))
         assert cfg.dry_run is False
-        assert len(cfg.exclude_directory_patterns) == 0
-        assert len(cfg.exclude_filename_patterns) == 0
+        assert len(cfg.ban) == 2  # built-in defaults
 
     def test_dry_run_flag(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
@@ -47,41 +46,34 @@ class TestConfigOverrides:
         assert cfg.input_dir == Path("/custom/input").resolve()
         assert cfg.output_dir == Path("/custom/output").resolve()
 
-    def test_directory_blocklist(self, tmp_path: Path) -> None:
+    def test_ban_list(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
-        p.write_text('[exclude]\ndirectories = ["trash"]\n')
+        p.write_text('[exclude]\nban = ["exam"]\n')
         cfg = Config.load(str(p))
-        assert "trash" in cfg.exclude_directories
-        assert "google photos" not in cfg.exclude_directories
+        assert len(cfg.ban) == 1
+        assert cfg.ban[0].search("exam")
 
-    def test_filename_patterns(self, tmp_path: Path) -> None:
+    def test_ban_string(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
-        p.write_text(
-            '[exclude]\nfilename_patterns = [{ name = "exam", pattern = "^\\\\d{4}_.*\\\\.pdf$" }]\n'
-        )
+        p.write_text('[exclude]\nban = "foo"\n')
         cfg = Config.load(str(p))
-        assert len(cfg.exclude_filename_patterns) == 1
-        pat = cfg.exclude_filename_patterns[0]
+        assert len(cfg.ban) == 1
+        assert cfg.ban[0].search("foobar")
+
+    def test_ban_regex(self, tmp_path: Path) -> None:
+        p = tmp_path / "cfg.toml"
+        p.write_text('[exclude]\nban = ["^\\\\d{4}_.*\\\\.pdf$"]\n')
+        cfg = Config.load(str(p))
+        assert len(cfg.ban) == 1
+        pat = cfg.ban[0]
         assert pat.match("1123_w15_ms_21.pdf")
         assert not pat.match("normal.pdf")
 
-    def test_directory_patterns(self, tmp_path: Path) -> None:
-        p = tmp_path / "cfg.toml"
-        p.write_text(
-            '[exclude]\ndirectory_patterns = [{ name = "dotlocal", pattern = "\\\\.local/" }]\n'
-        )
-        cfg = Config.load(str(p))
-        assert len(cfg.exclude_directory_patterns) == 1
-        pat = cfg.exclude_directory_patterns[0]
-        assert pat.search("foo/.local/bar")
-        assert not pat.search("foo/localization.txt")
-
     def test_invalid_regex_skipped(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"
-        p.write_text('[exclude]\nfilename_patterns = [{ name = "bad", pattern = "[invalid" }]\n')
+        p.write_text('[exclude]\nban = ["[invalid"]\n')
         cfg = Config.load(str(p))
-        assert len(cfg.exclude_filename_patterns) == 0
-        assert len(cfg.exclude_directory_patterns) == 0
+        assert len(cfg.ban) == 0
 
     def test_custom_target_extensions(self, tmp_path: Path) -> None:
         p = tmp_path / "cfg.toml"

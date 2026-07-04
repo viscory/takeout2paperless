@@ -8,12 +8,20 @@ dry_run = false
 fingerprint = true
 
 [filter]
-# Extensions to extract
-include_extensions = [".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt"]
+include_extensions = [
+    ".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt",
+]
+
+[paperless]
+# Optional: command to run after extraction when the user confirms consumption.
+# {output_dir} is substituted automatically.
+# consume_cmd = "docker compose -f ~/homelab/paperless-ngx/docker-compose.yml exec webserver python manage.py document_consumer {output_dir}"
 
 [exclude]
-# Directory names to skip (case-insensitive substring match)
-directories = [
+# Unified ban list. Every entry is compiled as a case-insensitive regex
+# and checked against both the filename and the full archive path.
+ban = [
+    # Directories (these will match inside the full archive path)
     "google photos",
     "trash",
     "cache",
@@ -24,16 +32,8 @@ directories = [
     "tuttee",
     "tor-browser",
     "downloads",
-]
-
-# Regex patterns matched against the full archive path
-directory_patterns = [
-    { name = "dot-local-config", pattern = "(?:^|/)\\.(?:local|config)(?:/|$)" },
-    { name = "telemetry",        pattern = "open-telemetry" },
-]
-
-# Regex patterns matched against the filename only
-filename_patterns = [
-    { name = "exam-papers",  pattern = "^\\d{4}_[a-z]{1,3}\\d{0,2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf|fq|sw|ab)(?:_\\d{1,3})?(?:\\s*\\(\\d+\\))?\\.pdf$" },
-    { name = "telemetry-csv", pattern = "^open-telemetry.*\\.csv$" },
+    # Exam papers — Cambridge / CIE-style + duplicates with (N) suffix
+    "^\\d{4}_[a-z]{1,3}\\d{0,2}_(?:qp|ms|er|gt|ir|sy|sr|ci|sm|in|tn|sp|nt|sf|fq|sw|ab)(?:_\\d{1,3})?(?:\\s*\\(\\d+\\))?\\.pdf$",
+    # Google Takeout telemetry CSV exports
+    "^open-telemetry.*\\.csv$",
 ]

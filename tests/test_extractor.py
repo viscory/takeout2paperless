@@ -16,11 +16,10 @@ class TestExtractorDryRun:
             input_dir=fixtures_dir,
             output_dir=tmp_path / "out",
             target_extensions=frozenset({".pdf", ".xlsx", ".csv"}),
-            exclude_directories=frozenset({"google photos"}),
-            exclude_directory_patterns=(),
-            exclude_filename_patterns=(),
+            ban=(),
             dry_run=True,
             fingerprint=False,
+            paperless_consume_cmd=None,
         )
         report = TakeoutExtractor(cfg).run()
         assert report.processed > 0
@@ -32,11 +31,10 @@ class TestExtractorDryRun:
             input_dir=fixtures_dir,
             output_dir=tmp_path / "out",
             target_extensions=frozenset({".pdf", ".xlsx", ".csv"}),
-            exclude_directories=frozenset({"google photos", "trash"}),
-            exclude_directory_patterns=(),
-            exclude_filename_patterns=(),
+            ban=(),
             dry_run=True,
             fingerprint=False,
+            paperless_consume_cmd=None,
         )
         report = TakeoutExtractor(cfg).run()
         assert report.skipped > 0
@@ -51,28 +49,26 @@ class TestExtractorFiltering:
             input_dir=fixtures_dir,
             output_dir=tmp_path / "out",
             target_extensions=frozenset({".pdf", ".xlsx", ".csv", ".jpg"}),
-            exclude_directories=frozenset({"google photos"}),
-            exclude_directory_patterns=(),
-            exclude_filename_patterns=(),
+            ban=(__import__("re").compile("google photos", __import__("re").IGNORECASE),),
             dry_run=True,
             fingerprint=False,
+            paperless_consume_cmd=None,
         )
         report = TakeoutExtractor(cfg).run()
-        assert report.skip_reasons.get("Excluded directory (google photos)", 0) > 0
+        assert report.skip_reasons.get("Banned pattern", 0) > 0
 
     def test_trash_allowed_when_disabled(self, tmp_path: Path, fixtures_dir: Path) -> None:
         cfg = Config(
             input_dir=fixtures_dir,
             output_dir=tmp_path / "out",
             target_extensions=frozenset({".pdf", ".xlsx", ".csv"}),
-            exclude_directories=frozenset(),  # none disabled
-            exclude_directory_patterns=(),
-            exclude_filename_patterns=(),
+            ban=(),
             dry_run=True,
             fingerprint=False,
+            paperless_consume_cmd=None,
         )
         report = TakeoutExtractor(cfg).run()
-        assert report.skip_reasons.get("Excluded directory (trash)", 0) == 0
+        assert report.skip_reasons.get("Banned pattern", 0) == 0
 
 
 class TestExtractorIntegration:
@@ -84,11 +80,13 @@ class TestExtractorIntegration:
             input_dir=fixtures_dir,
             output_dir=tmp_path / "out",
             target_extensions=frozenset({".pdf", ".xlsx", ".csv"}),
-            exclude_directories=frozenset({"google photos", "trash"}),
-            exclude_directory_patterns=(),
-            exclude_filename_patterns=(),
+            ban=(
+                __import__("re").compile("google photos", __import__("re").IGNORECASE),
+                __import__("re").compile("trash", __import__("re").IGNORECASE),
+            ),
             dry_run=True,
             fingerprint=False,
+            paperless_consume_cmd=None,
         )
         report = TakeoutExtractor(cfg).run()
 
@@ -97,7 +95,7 @@ class TestExtractorIntegration:
         #  test.tar.gz:   letter.pdf, draft.xlsx
         #  test.7z:       data.csv, 9702_s18_qp_12.pdf
         #
-        # Filters: target_exts={.pdf,.xlsx,.csv}, exclude={google photos,trash}
+        # Filters: target_exts={.pdf,.xlsx,.csv}, ban={google photos,trash}
         #
         # Processed: report.pdf, invoice.xlsx, 1123_w15_ms_21.pdf,          = 6
         #            letter.pdf, data.csv, 9702_s18_qp_12.pdf
